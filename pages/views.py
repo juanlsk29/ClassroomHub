@@ -52,3 +52,19 @@ def about(request):
 
 def contact(request):
     return HttpResponse("Contact information")
+
+def faq(request):
+    context = {
+        "questions": [
+            {
+                "question": "What is ClassroomHub?",
+                "answer": "ClassroomHub is a learning portal for students."
+            },
+            {
+                "question": "What resources can I find?",
+                "answer": "You can explore programming and web development resources."
+            },
+        ],
+    }
+
+    return render(request, "pages/faq.html", context)

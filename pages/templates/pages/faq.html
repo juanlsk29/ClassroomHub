@@ -1,0 +1,16 @@
+{% extends "pages/base.html" %}
+
+{% block title %}FAQ | ClassroomHub{% endblock %}
+
+{% block content %}
+    <h1>Frequently Asked Questions</h1>
+
+    {% for item in questions %}
+        <section>
+            <h2>{{ item.question }}</h2>
+            <p>{{ item.answer }}</p>
+        </section>
+    {% empty %}
+        <p>No questions available.</p>
+    {% endfor %}
+{% endblock %}
