@@ -1,0 +1,19 @@
+
+{% extends "pages/base.html" %}
+
+{% block title %}Home | ClassroomHub{% endblock %}
+
+{% block content %}
+    <h2>Welcome</h2>
+    <p>{{ welcome_message }}</p>
+    <p>
+        ClassroomHub is a learning portal designed
+        to help students explore educational resources
+        and improve their programming skills.
+    </p>
+    <p>
+        <a href="{% url 'pages:resources' %}">
+            Explore resources
+        </a>
+    </p>
+{% endblock %}
