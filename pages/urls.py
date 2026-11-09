@@ -7,6 +7,7 @@ app_name = "pages"
 urlpatterns = [
     path("", views.home, name="home"),
     path("resources/", views.resources, name="resources"),
+    path("resources/review/", views.resource_review, name="resource-review"),
     path("about/", views.about, name="about"),
         path("accounts/signup/", views.signup, name="signup"),
     path(
@@ -20,5 +21,6 @@ urlpatterns = [
         name="logout",
     ),
     path("dashboard/", views.dashboard, name="dashboard"),
+    path("dashboard/summary/", views.dashboard_summary, name="dashboard-summary"),
     path("faq/", views.faq, name="faq"),
 ]

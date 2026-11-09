@@ -1,54 +1,67 @@
 # ClassroomHub
 
+**Laboratorio 08 — Autenticación, sesiones y control de acceso**  
+**Repositorio:** [ClassroomHub](https://github.com/juanlsk29/ClassroomHub)  
+**Rama de entrega:** [`laboratorio-8`](https://github.com/juanlsk29/ClassroomHub/tree/laboratorio-8)
+
 ## 1. Descripción del proyecto
 
-ClassroomHub es una aplicación web educativa desarrollada con Django que permite consultar y administrar recursos relacionados con la programación y el desarrollo de software.
+ClassroomHub es una aplicación web educativa desarrollada con Django que permite consultar recursos de programación y desarrollo de software. El proyecto se ha ampliado en tres etapas.
 
-El proyecto inició como una aplicación enfocada en los fundamentos de Django, utilizando rutas, vistas y plantillas HTML. En el Laboratorio 7 se amplió su funcionamiento mediante la integración de una base de datos MariaDB, permitiendo almacenar información de manera persistente y administrarla a través del ORM y Django Admin.
+| Laboratorio | Avance |
+|---|---|
+| 06 | Creación de rutas, vistas y plantillas HTML, con navegación entre páginas. |
+| 07 | Integración de MariaDB, modelos `Category` y `Resource`, migraciones, consultas mediante el ORM y administración de datos con Django Admin. |
+| 08 | Registro de usuarios, inicio y cierre de sesión, panel privado, revisión del catálogo mediante permisos y resumen privado de recursos. |
 
-El objetivo principal es aplicar el patrón MTV (Model-Template-View), establecer relaciones entre modelos, gestionar migraciones y comprobar el correcto funcionamiento de la aplicación mediante pruebas automatizadas.
+El Laboratorio 08 distingue tres tipos de acceso. Cualquier visitante puede consultar el catálogo general. Una cuenta autenticada puede entrar al panel y al resumen privado. Una cuenta con el permiso `pages.view_resource` puede consultar además la página de revisión.
 
 ## 2. Tecnologías y versiones
 
-- **Lenguaje:** Python 3.14.5.
-- **Framework:** Django 6.1.3.
-- **Base de datos:** MariaDB 13.0.2.
-- **Frontend:** HTML y CSS.
-- **Entorno virtual:** venv.
-- **Conector SQL:** mysqlclient.
-- **Variables de entorno:** python-dotenv.
-- **Administración de datos:** Django Admin.
-- **Pruebas automatizadas:** TestCase de Django.
-- **Control de versiones:** Git y GitHub.
+| Componente | Tecnología |
+|---|---|
+| Lenguaje | Python 3.14.5 |
+| Framework | Django 6.1.3, versión documentada en el Laboratorio 07 |
+| Motor de base de datos | MariaDB 13.0.2, instalación documentada en el Laboratorio 07 |
+| Interfaz | HTML, CSS y plantillas de Django |
+| Entorno virtual | `venv` |
+| Controlador SQL | `mysqlclient` |
+| Variables de entorno | `python-dotenv` |
+| Administración | Django Admin |
+| Autenticación y autorización | `django.contrib.auth` |
+| Sesiones | `django.contrib.sessions` |
+| Pruebas automatizadas | `TestCase` y `Client` de Django |
+| Control de versiones | Git y GitHub |
 
-La aplicación utiliza MariaDB como motor de base de datos y el ORM de Django para realizar operaciones sin escribir directamente las consultas SQL.
+Django utiliza `django.db.backends.mysql` para conectarse a MariaDB. El ORM permite consultar los modelos mediante código Python y delega en Django la generación de las consultas SQL.
 
 ## 3. Estructura del proyecto
 
 ```text
-laboratorio-06/
-│
+laboratorio-08/
 ├── config/
 │   ├── __init__.py
 │   ├── settings.py
 │   ├── urls.py
 │   ├── asgi.py
 │   └── wsgi.py
-│
 ├── pages/
 │   ├── migrations/
 │   │   ├── __init__.py
 │   │   ├── 0001_initial.py
 │   │   └── 0002_alter_category_id_alter_resource_id.py
-│   │
 │   ├── templates/
 │   │   └── pages/
 │   │       ├── base.html
 │   │       ├── home.html
 │   │       ├── resources.html
 │   │       ├── about.html
-│   │       └── faq.html
-│   │
+│   │       ├── faq.html
+│   │       ├── signup.html
+│   │       ├── login.html
+│   │       ├── dashboard.html
+│   │       ├── dashboard_summary.html
+│   │       └── review.html
 │   ├── __init__.py
 │   ├── admin.py
 │   ├── apps.py
@@ -56,8 +69,6 @@ laboratorio-06/
 │   ├── tests.py
 │   ├── urls.py
 │   └── views.py
-│
-├── .env
 ├── .env.example
 ├── .gitignore
 ├── manage.py
@@ -65,57 +76,50 @@ laboratorio-06/
 └── README.md
 ```
 
+El archivo `.env` y la carpeta `.venv` se preparan en cada equipo y se excluyen de Git.
+
 ### Responsabilidades principales
 
-- **config/settings.py:** contiene la configuración general del proyecto y la conexión con MariaDB.
-- **config/urls.py:** organiza las rutas principales de Django.
-- **pages/models.py:** define los modelos Category y Resource.
-- **pages/views.py:** procesa las solicitudes HTTP y consulta los recursos mediante el ORM.
-- **pages/urls.py:** define las rutas de la aplicación.
-- **pages/admin.py:** configura la administración de categorías y recursos.
-- **pages/templates/:** contiene las plantillas HTML de las páginas.
-- **pages/migrations/:** almacena los cambios realizados en la estructura de la base de datos.
-- **pages/tests.py:** contiene las pruebas automatizadas.
-- **manage.py:** permite ejecutar comandos de administración de Django.
-- **requirements.txt:** registra las dependencias necesarias para instalar el proyecto.
-- **.env:** almacena las variables privadas de configuración.
+| Archivo o directorio | Responsabilidad |
+|---|---|
+| `config/settings.py` | Configura la base de datos, las aplicaciones instaladas, el middleware y los destinos de autenticación. |
+| `config/urls.py` | Conecta Django Admin y las rutas de la aplicación `pages`. |
+| `pages/models.py` | Define las categorías, los recursos y la relación entre ambos. |
+| `pages/views.py` | Atiende las solicitudes del catálogo, el registro, el panel, el resumen y la revisión. |
+| `pages/urls.py` | Define las rutas públicas y privadas y conecta `LoginView` y `LogoutView`. |
+| `pages/admin.py` | Configura la administración de categorías y recursos. |
+| `pages/templates/pages/` | Contiene las plantillas HTML y la navegación compartida. |
+| `pages/migrations/` | Conserva el historial de cambios de los modelos de la aplicación. |
+| `pages/tests.py` | Contiene las pruebas del catálogo, autenticación, sesiones, permisos y resumen privado. |
+| `requirements.txt` | Registra las dependencias necesarias para instalar el proyecto. |
+| `.env.example` | Sirve como referencia para crear la configuración local. |
 
 ## 4. Instalación y configuración
 
 ### Requisitos previos
 
-Para ejecutar ClassroomHub se necesita:
+- Una instalación de Python compatible con las dependencias del proyecto.
+- MariaDB o MySQL en ejecución.
+- Git y una terminal de comandos.
+- Acceso para configurar una base de desarrollo y una cuenta SQL local.
 
-- Python compatible con Django 6.1.
-- MariaDB 10.11 o superior, o una versión compatible de MySQL.
-- Git.
-- Una terminal de comandos.
-- Un entorno virtual de Python.
+### Clonar la rama del laboratorio
 
-### Clonar el repositorio
-
-```bash
-git clone URL_DEL_REPOSITORIO
-cd laboratorio-06
+```bat
+git clone --branch laboratorio-8 https://github.com/juanlsk29/ClassroomHub.git laboratorio-08
+cd laboratorio-08
 ```
 
-Reemplazar `URL_DEL_REPOSITORIO` por la dirección real del repositorio de GitHub.
+### Crear y activar el entorno virtual
 
-### Crear el entorno virtual
+En Windows CMD:
 
-```bash
+```bat
 python -m venv .venv
+.venv\Scripts\activate.bat
 ```
 
-### Activar el entorno virtual
-
-En Windows (CMD):
-
-```cmd
-.venv\Scripts\activate
-```
-
-En PowerShell:
+En PowerShell, el comando de activación es:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
@@ -123,19 +127,20 @@ En PowerShell:
 
 ### Instalar las dependencias
 
-```bash
+Con el entorno virtual activo:
+
+```bat
 python -m pip install -r requirements.txt
+python -m django --version
 ```
 
-Las dependencias principales del proyecto son Django, mysqlclient y python-dotenv.
+Si ya existe un entorno virtual funcional en la carpeta del proyecto, basta con activarlo e instalar las dependencias que falten.
 
 ## 5. Configuración de MariaDB
 
-### Creación de la base de datos
+### Crear la base de desarrollo
 
-El proyecto utiliza una base de datos llamada `classroom_hub`.
-
-Desde una cuenta administradora de MariaDB se puede crear mediante:
+Desde una cuenta administradora del motor de base de datos:
 
 ```sql
 CREATE DATABASE IF NOT EXISTS classroom_hub
@@ -143,20 +148,14 @@ CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 ```
 
-### Creación del usuario SQL
+### Crear la cuenta SQL de la aplicación
 
-Se utiliza un usuario específico para la aplicación, evitando conectar Django directamente con la cuenta root.
+Si ya existe el usuario del Laboratorio 07, se puede reutilizar. Para una instalación nueva:
 
 ```sql
 CREATE USER 'classroomhub_user'@'127.0.0.1'
 IDENTIFIED BY 'CONTRASENA_PRIVADA';
-```
 
-La contraseña debe reemplazarse por una clave privada elegida durante la configuración.
-
-### Asignación de permisos
-
-```sql
 GRANT ALL PRIVILEGES ON classroom_hub.*
 TO 'classroomhub_user'@'127.0.0.1';
 
@@ -164,13 +163,17 @@ GRANT ALL PRIVILEGES ON test_classroom_hub.*
 TO 'classroomhub_user'@'127.0.0.1';
 ```
 
-Los permisos de la segunda base permiten que Django ejecute las pruebas automatizadas en una base independiente.
+Reemplaza `CONTRASENA_PRIVADA` por una clave local. Los permisos se limitan a los esquemas de desarrollo y pruebas. El ejecutor de Django crea y elimina el esquema de pruebas durante una ejecución normal.
 
-### Configuración de variables de entorno
+### Configurar las variables de entorno
 
-El archivo `.env` contiene la configuración necesaria para conectar Django con MariaDB.
+En CMD, si todavía no existe `.env`:
 
-Ejemplo de configuración:
+```bat
+copy .env.example .env
+```
+
+Ejemplo de configuración local:
 
 ```env
 DB_NAME=classroom_hub
@@ -180,84 +183,74 @@ DB_HOST=127.0.0.1
 DB_PORT=3307
 ```
 
-Durante el desarrollo se utilizó una instalación independiente de MariaDB 13.0.2 en el puerto `3307`, separada de la instalación de XAMPP.
+El puerto `3307` corresponde a la instalación independiente de MariaDB documentada en el Laboratorio 07. Ajusta el valor si el servidor de tu equipo escucha en otro puerto.
 
-El archivo `.env.example` sirve como referencia para configurar el proyecto en otros equipos.
-
-**Importante:** el archivo `.env` no debe subirse al repositorio porque contiene credenciales privadas. Debe permanecer excluido mediante `.gitignore`.
+La cuenta `classroomhub_user` conecta Django con MariaDB. Las cuentas de ClassroomHub se crean mediante el formulario **Sign up** y se administran con el sistema de usuarios de Django. Guarda las credenciales reales solo en la configuración local y conserva `.env` en `.gitignore`.
 
 ## 6. Modelos y relaciones
 
-En el Laboratorio 7 se implementaron dos modelos principales: `Category` y `Resource`.
+### Modelo `Category`
 
-### Modelo Category
-
-Representa las categorías utilizadas para organizar los recursos educativos.
-
-Campos principales:
+Representa las categorías del catálogo.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `id` | Clave primaria | Identificador de la categoría |
-| `name` | CharField | Nombre único de la categoría |
-| `description` | TextField | Descripción opcional |
+| `id` | Clave primaria | Identificador de la categoría. |
+| `name` | `CharField` | Nombre único de la categoría. |
+| `description` | `TextField` | Descripción opcional. |
 
 Las categorías se ordenan alfabéticamente por nombre.
 
-### Modelo Resource
+### Modelo `Resource`
 
-Representa los recursos educativos registrados en ClassroomHub.
+Representa un recurso educativo almacenado en el catálogo.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `id` | Clave primaria | Identificador del recurso |
-| `title` | CharField | Título del recurso |
-| `description` | TextField | Descripción opcional |
-| `available` | BooleanField | Indica si está disponible |
-| `category` | ForeignKey | Categoría relacionada |
-| `created_at` | DateTimeField | Fecha de creación |
-| `resource_type` | CharField | Tipo de recurso, opcional |
+| `id` | Clave primaria | Identificador del recurso. |
+| `title` | `CharField` | Título del recurso. |
+| `description` | `TextField` | Descripción opcional. |
+| `available` | `BooleanField` | Indica si el recurso está disponible. |
+| `category` | `ForeignKey` | Categoría a la que pertenece el recurso. |
+| `created_at` | `DateTimeField` | Fecha de creación. |
+| `resource_type` | `CharField` | Tipo de recurso, de diligenciamiento opcional. |
 
 ### Relación entre los modelos
 
-La relación entre `Category` y `Resource` es de **uno a muchos (1:N)**.
+`Category` y `Resource` tienen una relación **uno a muchos**. Una categoría puede contener varios recursos y cada recurso pertenece a una categoría. La clave foránea utiliza `on_delete=models.PROTECT` para impedir que se elimine una categoría con recursos asociados. `related_name="resources"` permite acceder a ellos mediante `category.resources`.
 
-Esto significa que una categoría puede tener varios recursos, mientras que cada recurso pertenece a una categoría.
+### Usuarios, grupos y sesiones
 
-La relación utiliza `ForeignKey` con `on_delete=models.PROTECT`, evitando eliminar una categoría cuando todavía tiene recursos asociados.
-
-También se utiliza `related_name="resources"` para consultar los recursos de una categoría.
+El Laboratorio 08 usa el modelo estándar de Django, accesible mediante `get_user_model()`. Las aplicaciones `auth`, `contenttypes` y `sessions` administran las tablas de usuarios, grupos, permisos y sesiones. La relación entre cuentas y grupos permite conceder el permiso de revisión sin modificar los modelos del catálogo.
 
 ## 7. Migraciones de la base de datos
 
-Las migraciones permiten mantener sincronizados los modelos de Python con las tablas de MariaDB.
+### Aplicar las migraciones
 
-### Generar migraciones
-
-```bash
-python manage.py makemigrations
-```
-
-### Aplicar migraciones
-
-```bash
+```bat
 python manage.py migrate
 ```
 
-### Consultar las migraciones
+### Consultar su estado
 
-```bash
-python manage.py showmigrations pages
+```bat
+python manage.py showmigrations auth contenttypes sessions pages
 ```
 
-En el desarrollo de ClassroomHub se aplicaron las siguientes migraciones:
+En la comprobación del Laboratorio 08, todas las migraciones consultadas aparecieron con `[X]`.
 
-- `0001_initial`: creación inicial de los modelos.
-- `0002_alter_category_id_alter_resource_id`: actualización de los campos identificadores de Category y Resource.
+| Aplicación | Migraciones aplicadas |
+|---|---|
+| `auth` | De `0001_initial` a `0012_alter_user_first_name_max_length`. |
+| `contenttypes` | `0001_initial` y `0002_remove_content_type_name`. |
+| `sessions` | `0001_initial`. |
+| `pages` | `0001_initial` y `0002_alter_category_id_alter_resource_id`. |
 
-### Comprobar sincronización
+La primera migración de `pages` crea los modelos del catálogo. La segunda actualiza los identificadores de `Category` y `Resource`. El campo `resource_type` ya figuraba en la migración inicial de este proyecto.
 
-```bash
+### Comprobar la sincronización
+
+```bat
 python manage.py makemigrations --check --dry-run
 ```
 
@@ -267,399 +260,323 @@ Resultado obtenido:
 No changes detected
 ```
 
-Esto confirma que los modelos y las migraciones se encuentran sincronizados.
+El Laboratorio 08 reutiliza los modelos y las migraciones existentes. Las tablas de autenticación y sesiones se gestionan con las migraciones incluidas en Django.
 
-## 8. Arquitectura MTV y funcionamiento de las rutas
+## 8. Arquitectura MTV y funcionamiento de las vistas
 
-ClassroomHub utiliza el patrón MTV de Django, compuesto por tres elementos.
+### Model
 
-### Model (Modelo)
+`Category` y `Resource` representan los datos del catálogo. Django aporta los modelos de usuario, grupo y permiso y el almacenamiento de sesiones.
 
-Se encarga de representar y gestionar los datos almacenados en MariaDB.
+### Template
 
-Los modelos Category y Resource permiten crear, consultar, actualizar y eliminar registros mediante el ORM de Django.
+`base.html` define la estructura común de las páginas. La navegación muestra **Log in** y **Sign up** para visitantes. Las cuentas autenticadas ven **Dashboard** y **Log out**. **Review** aparece cuando la cuenta tiene `pages.view_resource`.
 
-### Template (Plantilla)
+### View
 
-Se encarga de presentar la información mediante HTML.
+Las vistas reciben la solicitud, comprueban el acceso cuando corresponde y devuelven una respuesta. `resources()` consulta los recursos mediante el ORM y los envía a `resources.html`. `resource_review()` también consulta el catálogo y protege la operación mediante dos decoradores.
 
-La plantilla `base.html` contiene elementos compartidos, como la navegación y la estructura general. Las demás páginas reutilizan estos elementos mediante herencia de plantillas.
+### Identificación, autenticación y autorización
 
-### View (Vista)
+| Concepto | Aplicación en ClassroomHub |
+|---|---|
+| Identificación | La persona indica qué cuenta quiere utilizar mediante su nombre de usuario. |
+| Autenticación | Django verifica las credenciales y establece la identidad de la cuenta para las solicitudes siguientes. |
+| Autorización | Django comprueba si esa cuenta tiene el permiso necesario para consultar la página de revisión. |
 
-Recibe las solicitudes HTTP, ejecuta la lógica correspondiente y devuelve una respuesta al navegador.
+### Registro e inicio de sesión
 
-En la ruta `/resources/`, la vista consulta los recursos guardados en MariaDB y envía los resultados a la plantilla `resources.html`.
+1. `signup()` presenta `UserCreationForm` y procesa su envío por POST.
+2. El formulario valida el nombre de usuario y las contraseñas. Cuando los datos son válidos, guarda una cuenta común con una contraseña procesada mediante un hash y redirige a login.
+3. `LoginView` verifica las credenciales y abre la sesión. Si existe un destino `next` válido, lo usa para la redirección. En los demás casos abre el panel.
+4. `request.user` identifica a la cuenta de la solicitud. `request.session` almacena el contador de visitas al panel.
+5. `LogoutView` recibe el formulario POST, invalida la sesión y redirige a la página de inicio.
 
-### Funcionamiento de `/resources/`
+Los formularios de registro, login y logout incluyen `{% csrf_token %}`. El middleware de sesiones permite recuperar la sesión a partir de su cookie, y el middleware de autenticación establece `request.user`. `SessionMiddleware` debe ejecutarse antes de `AuthenticationMiddleware`.
 
-1. El navegador solicita `/resources/`.
-2. Django identifica la ruta en los archivos de configuración.
-3. Se ejecuta la vista `resources()` de `pages/views.py`.
-4. La vista consulta el modelo Resource mediante el ORM.
-5. Se recuperan los recursos registrados en la base de datos.
-6. Los resultados se envían a `resources.html`.
-7. Django genera la respuesta HTML y la devuelve al navegador.
+### Destinos de autenticación
 
-De esta manera, los recursos se muestran dinámicamente y no dependen de una lista fija escrita en el código.
+| Ajuste | Ruta nombrada | Función |
+|---|---|---|
+| `LOGIN_URL` | `pages:login` | Envía al login a un visitante que solicita una vista privada. |
+| `LOGIN_REDIRECT_URL` | `pages:dashboard` | Define el destino predeterminado tras un login correcto. |
+| `LOGOUT_REDIRECT_URL` | `pages:home` | Define el destino tras cerrar sesión. |
 
 ## 9. Rutas principales
 
-| Ruta | Descripción |
-|---|---|
-| `/` | Página principal de ClassroomHub |
-| `/resources/` | Listado dinámico de recursos educativos |
-| `/about/` | Información sobre el propósito del proyecto |
-| `/faq/` | Preguntas frecuentes |
-| `/admin/` | Panel de administración de Django |
+| Ruta | Acceso | Descripción |
+|---|---|---|
+| `/` | Público | Página de inicio. |
+| `/resources/` | Público | Listado de recursos almacenados en MariaDB. |
+| `/about/` | Público | Información sobre el propósito del proyecto. |
+| `/faq/` | Público | Preguntas frecuentes, página heredada del proyecto. |
+| `/accounts/signup/` | Visitante | Formulario para crear una cuenta común. |
+| `/accounts/login/` | Público | Formulario de inicio de sesión. |
+| `/accounts/logout/` | POST con CSRF | Cierre de sesión mediante el botón del menú. Una solicitud GET devuelve HTTP `405`. |
+| `/dashboard/` | Cuenta autenticada | Panel privado con nombre de usuario y contador de visitas. |
+| `/dashboard/summary/` | Cuenta autenticada | Resumen de solo lectura con el total de recursos y el total disponible. |
+| `/resources/review/` | Cuenta autenticada con `pages.view_resource` | Página de revisión del catálogo de solo lectura. |
+| `/admin/` | Personal autorizado | Administración de categorías, recursos, usuarios y grupos. |
 
-Las rutas utilizan nombres definidos en Django para facilitar la navegación y evitar depender de direcciones escritas manualmente.
+Las rutas de `pages` utilizan nombres como `pages:dashboard`, `pages:dashboard-summary` y `pages:resource-review` para generar enlaces y redirecciones desde el código y las plantillas.
 
-Las direcciones inexistentes generan una respuesta HTTP 404.
+## 10. Django Admin, usuarios y permisos
 
-## 10. Django Admin y operaciones CRUD
+### Administración del catálogo
 
-ClassroomHub utiliza Django Admin para administrar las categorías y los recursos registrados en MariaDB.
+Django Admin permite crear, consultar, actualizar y eliminar categorías y recursos de acuerdo con los permisos de la cuenta administradora. Los cambios quedan almacenados en MariaDB y se reflejan en `/resources/`. El panel también ofrece búsquedas y filtros según la configuración de `pages/admin.py`.
 
-El panel de administración se encuentra en:
+### Crear una cuenta común
 
-```text
-http://127.0.0.1:8000/admin/
-```
+1. Abre `/accounts/signup/` sin iniciar sesión.
+2. Escribe un nombre de usuario y confirma la contraseña.
+3. Envía el formulario. Si los datos son válidos, Django crea la cuenta y abre el login.
+4. Ingresa con esa cuenta para comprobar el acceso al panel.
 
-### Administración de categorías
+### Crear el grupo `Catalog reviewers`
 
-Permite:
+1. Si necesitas una cuenta administradora, ejecuta `python manage.py createsuperuser`.
+2. Abre `/admin/` e inicia sesión con la cuenta administradora.
+3. En **Groups**, crea un grupo con el nombre `Catalog reviewers`.
+4. Asigna únicamente **Can view resource** del modelo `Resource` de la aplicación `pages`. El permiso se identifica en código como `pages.view_resource`.
+5. En **Users**, abre la cuenta común que usarás como revisora y agrégala al grupo. Mantén desactivados **Staff status** y **Superuser status** para esa cuenta.
+6. Guarda los cambios e inicia sesión en ClassroomHub con la cuenta revisora para consultar `/resources/review/`.
 
-- Registrar nuevas categorías.
-- Consultar categorías existentes.
-- Modificar nombres y descripciones.
-- Eliminar categorías cuando sus relaciones lo permiten.
-- Buscar categorías por nombre.
+El grupo y sus asignaciones se guardan en la base de datos. Repite esta configuración en cada instalación nueva.
 
-### Administración de recursos
+### Comportamiento por tipo de acceso
 
-Permite:
+| Ruta | Visitante anónimo | Cuenta común sin permiso | Cuenta revisora |
+|---|---|---|---|
+| `/resources/` | HTTP `200` | HTTP `200` | HTTP `200` |
+| `/dashboard/` | Redirección al login | HTTP `200` | HTTP `200` |
+| `/dashboard/summary/` | Redirección al login | HTTP `200` | HTTP `200` |
+| `/resources/review/` | Redirección al login | HTTP `403` | HTTP `200` |
 
-- Crear recursos educativos.
-- Consultar los registros almacenados.
-- Actualizar títulos, descripciones, categorías y disponibilidad.
-- Eliminar recursos.
-- Filtrar por categoría y disponibilidad.
-- Buscar por título, descripción y categoría.
-
-Las operaciones CRUD se realizan desde Django Admin y los cambios quedan almacenados en MariaDB.
-
-Se verificó que los recursos registrados o modificados desde el panel administrativo se reflejan correctamente en la página `/resources/`.
+En `resource_review`, `@login_required` se aplica antes de `@permission_required("pages.view_resource", raise_exception=True)`. La vista comprueba el permiso incluso cuando alguien escribe la URL directamente.
 
 ## 11. Consultas mediante el ORM
 
-El ORM (Object-Relational Mapping) de Django permite interactuar con la base de datos utilizando clases y métodos de Python.
-
-Algunos ejemplos de operaciones son:
-
-### Consultar recursos
+### Consultar recursos y categorías
 
 ```python
-Resource.objects.all()
+from pages.models import Category, Resource
+
+resources = Resource.objects.select_related("category").all()
+available_resources = Resource.objects.filter(available=True)
+category = Category.objects.get(name="Programming")
+category_resources = category.resources.all()
 ```
 
-### Consultar recursos disponibles
+`select_related("category")` permite recuperar los datos de la categoría junto con cada recurso. El catálogo público y la vista de revisión utilizan esta relación para presentar la información.
+
+### Contar recursos en el resumen privado
 
 ```python
-Resource.objects.filter(available=True)
+total_resources = Resource.objects.count()
+available_resources = Resource.objects.filter(available=True).count()
 ```
 
-### Consultar una categoría
+El primer conteo incluye todos los registros. El segundo incluye los que tienen `available=True`. La vista entrega los dos valores a `dashboard_summary.html` y solo requiere una sesión autenticada.
+
+### Consultar usuarios y permisos
+
+Desde `python manage.py shell` se puede inspeccionar una cuenta existente. Reemplaza el nombre de ejemplo por una cuenta registrada en tu instalación.
 
 ```python
-Category.objects.get(name="Programming")
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+account = User.objects.get(username="nombre_de_usuario")
+
+print(account.is_staff)
+print(account.is_superuser)
+print(account.groups.count())
+print(account.has_perm("pages.view_resource"))
 ```
 
-### Consultar recursos y sus categorías
-
-```python
-Resource.objects.select_related("category").all()
-```
-
-### Consultar recursos asociados a una categoría
-
-```python
-category.resources.all()
-```
-
-El ORM facilita la organización del código, la administración de relaciones y la separación entre la lógica de la aplicación y las consultas SQL.
+`create_user()` y `set_password()` son las herramientas de Django para crear cuentas o cambiar contraseñas desde Python. El registro web usa `UserCreationForm`, que aplica el procesamiento de contraseñas al guardar la cuenta.
 
 ## 12. Pruebas automatizadas
 
-En el Laboratorio 7 se actualizaron las pruebas del proyecto para incluir el funcionamiento de los modelos y de la base de datos.
+Las pruebas se encuentran en `pages/tests.py`. El Laboratorio 08 conserva las diez pruebas del catálogo y agrega dieciocho de autenticación y permisos y dos del reto adicional.
 
-Se utiliza `TestCase` de Django, que permite ejecutar pruebas con consultas SQL de forma aislada.
+| Bloque | Cantidad | Cobertura |
+|---|---:|---|
+| Laboratorio 07 | 10 | Páginas, navegación, respuestas HTTP, datos del catálogo, modelos y relaciones. |
+| `AuthenticationTests` | 12 | Registro, formularios inválidos, credenciales, redirecciones, contador de sesión, logout y CSRF. |
+| `ResourceReviewPermissionTests` | 6 | Acceso anónimo, rechazo de cuentas sin permiso, acceso de revisores y continuidad del catálogo público. |
+| `DashboardSummaryTests` | 2 | Redirección de visitantes y conteos correctos para una cuenta autenticada común. |
+| **Total** | **30** | **Catálogo, autenticación, sesiones, permisos y resumen privado.** |
 
-### Pruebas implementadas
+### Casos cubiertos en el Laboratorio 08
 
-| N.º | Prueba | Objetivo |
-|---|---|---|
-| 1 | `test_home_page_renders` | Verificar la página de inicio |
-| 2 | `test_about_page_renders` | Verificar la página About |
-| 3 | `test_faq_page_uses_correct_template` | Verificar la plantilla de FAQ |
-| 4 | `test_home_navigation_links_to_resources` | Verificar la navegación |
-| 5 | `test_resources_page_shows_example_data` | Verificar recursos obtenidos desde la base de datos de pruebas |
-| 6 | `test_unknown_page_returns_not_found` | Verificar respuesta HTTP 404 |
-| 7 | `test_category_string_representation` | Verificar la representación de Category |
-| 8 | `test_resource_string_representation` | Verificar la representación de Resource |
-| 9 | `test_category_resource_relationship` | Verificar la relación entre modelos |
-| 10 | `test_resource_default_availability` | Verificar el valor predeterminado de disponibilidad |
+| Funcionalidad | Casos verificados |
+|---|---|
+| Registro | Se muestra el formulario. Una cuenta válida se crea sin privilegios administrativos y su contraseña se puede verificar. Las contraseñas distintas y los nombres duplicados se rechazan. |
+| Login | Las credenciales incorrectas no abren una sesión. Las correctas redirigen al panel o al destino local indicado en `next`. |
+| Panel | Un visitante recibe una redirección al login. Las visitas consecutivas en una sesión incrementan el contador. |
+| Logout | GET devuelve HTTP `405`. POST cierra la sesión y una nueva solicitud al panel requiere autenticación. |
+| CSRF | El cliente con verificación CSRF activa rechaza con HTTP `403` un POST de login sin token. |
+| Revisión | El visitante va al login. La cuenta común recibe HTTP `403`, incluso al escribir la URL. El revisor recibe HTTP `200` sin convertirse en personal administrativo. |
+| Catálogo público | La página muestra recursos a visitantes sin sesión. |
+| Resumen privado | El visitante va al login. Una cuenta común autenticada puede ver el total y el número de recursos disponibles. |
 
 ### Ejecutar las pruebas
 
-```bash
+```bat
+python manage.py test pages
+```
+
+Para ver el nombre y resultado de cada prueba:
+
+```bat
 python manage.py test pages -v 2
 ```
 
-### Resultados obtenidos
+### Base de pruebas
 
-```text
-Found 10 test(s).
-System check identified no issues (0 silenced).
-
-Ran 10 tests in 0.118s
-
-OK
-```
-
-**Resultado final: 10 pruebas aprobadas y 0 fallos.**
-
-Durante la ejecución, Django creó temporalmente la base `test_classroom_hub`, aplicó las migraciones y eliminó la base de pruebas al finalizar.
-
-Esto permitió comprobar el funcionamiento de la aplicación sin alterar los registros de la base principal.
+El esquema de pruebas configurado para el proyecto es `test_classroom_hub`. Debe estar separado de `classroom_hub`, que contiene los datos de desarrollo. Las pruebas crean sus propios recursos, usuarios y grupos. La salida de la ejecución confirmó la creación y eliminación de la base temporal asociada al alias `default`.
 
 ## 13. Ejecución del proyecto
 
-### Verificar la configuración
+Desde la carpeta que contiene `manage.py`, activa el entorno virtual y confirma que MariaDB esté iniciado. Después ejecuta:
 
-```bash
+```bat
 python manage.py check
-```
-
-### Comprobar las migraciones
-
-```bash
-python manage.py showmigrations pages
-```
-
-### Aplicar migraciones pendientes
-
-```bash
 python manage.py migrate
-```
-
-### Crear un superusuario
-
-Si es la primera vez que se configura la base de datos:
-
-```bash
-python manage.py createsuperuser
-```
-
-### Ejecutar el servidor
-
-```bash
 python manage.py runserver
 ```
 
-Abrir en el navegador:
+Abre [http://127.0.0.1:8000/](http://127.0.0.1:8000/) en el navegador. Para detener el servidor, pulsa `Ctrl + C` en la terminal.
 
-```text
-http://127.0.0.1:8000/
-```
+### Probar una sesión completa
 
-Para detener el servidor se utiliza `Ctrl + C` en la terminal.
+1. Abre **Sign up** y crea una cuenta común.
+2. Entra a **Log in** e inicia sesión con esa cuenta.
+3. Abre **Dashboard**. La primera visita muestra `1`. Una recarga debe mostrar `2`.
+4. Abre **View resource summary** y comprueba ambos conteos.
+5. Pulsa **Log out**. El navegador debe volver al inicio.
+6. Intenta abrir `/dashboard/` sin sesión. Django debe enviarte al login.
+7. Inicia sesión otra vez y comprueba que el contador empiece en `1`.
 
 ## 14. Dificultades encontradas y soluciones
 
-### Incompatibilidad entre Django y MariaDB
+### Configuración heredada de MariaDB
 
-Inicialmente se intentó utilizar MariaDB 10.4.32, incluido en XAMPP.
+En el Laboratorio 07 se pasó de la instalación de MariaDB incluida en XAMPP a una instalación independiente en el puerto `3307`. Esta configuración permitió conservar la conexión del catálogo y preparar los permisos del esquema de pruebas. El Laboratorio 08 reutiliza esa configuración.
 
-Sin embargo, Django 6.1.3 requiere MariaDB 10.11 o superior.
+### Consulta de una cuenta inexistente
 
-**Solución:** se configuró una instalación independiente de MariaDB 13.0.2 en el puerto `3307`, conservando el servidor de XAMPP en el puerto `3306`.
+Durante el reto de registro se ejecutó `User.objects.get()` con un nombre de ejemplo. Django devolvió `User.DoesNotExist` y los intentos de consultar `account` produjeron `NameError` porque la variable no se había asignado.
 
-### Problemas de permisos SQL
+Se listaron los nombres existentes mediante `values_list("username", flat=True)`, se consultó la cuenta registrada y se ejecutaron las instrucciones en líneas separadas. El resultado fue `False False 0` para `is_staff`, `is_superuser` y cantidad de grupos.
 
-Al configurar la base de datos se presentaron errores de acceso relacionados con el usuario de la aplicación.
+### Publicación en la rama del laboratorio
 
-**Solución:** se creó el usuario `classroomhub_user` y se asignaron los permisos necesarios sobre la base principal y la base de pruebas.
+El primer intento de push devolvió `src refspec laboratorio-8 does not match any`. El commit ya existía localmente, pero la rama de destino aún no estaba disponible en esa copia y `origin` apuntaba al repositorio anterior.
 
-### Corrupción de una tabla interna de XAMPP
-
-Durante la configuración del servidor antiguo se detectó corrupción en la tabla interna `mysql.db`.
-
-**Solución:** se verificó su estado mediante `CHECK TABLE`, se realizó la reparación con `REPAIR TABLE` y se comprobó que la tabla quedara en estado correcto.
-
-### Diferencias entre modelos y migraciones
-
-Django detectó modificaciones pendientes en los identificadores de los modelos Category y Resource.
-
-**Solución:** se generó y aplicó la migración `0002_alter_category_id_alter_resource_id.py`, verificando posteriormente que no existieran cambios pendientes.
-
-### Prueba automatizada incompatible con el ORM
-
-Una prueba heredada del Laboratorio 6 falló porque utilizaba `SimpleTestCase`, que no permite consultas a la base de datos por defecto.
-
-**Solución:** se actualizó el archivo `pages/tests.py` para utilizar `TestCase`, se adaptaron las pruebas existentes y se completaron diez pruebas automatizadas, todas aprobadas.
+Se actualizó `origin` para apuntar a `ClassroomHub`, se obtuvo la rama `laboratorio-8` y se incorporó el commit existente. La comprobación de Git mostró el mismo commit en `laboratorio-8` y `origin/laboratorio-8`.
 
 ## 15. Funcionalidades implementadas
 
-- Navegación entre páginas mediante rutas de Django.
-- Organización del proyecto mediante el patrón MTV.
-- Uso de vistas y plantillas HTML.
-- Herencia de plantillas mediante `base.html`.
-- Conexión de Django con MariaDB.
-- Configuración mediante variables de entorno.
-- Modelos Category y Resource.
-- Relación uno a muchos entre categorías y recursos.
-- Migraciones para crear y actualizar las tablas.
-- Consultas a la base de datos mediante el ORM.
-- Visualización dinámica de recursos educativos.
+### Catálogo persistente
+
+- Navegación mediante rutas, vistas y plantillas de Django.
+- Conexión a MariaDB mediante variables de entorno.
+- Modelos `Category` y `Resource` con relación uno a muchos.
+- Consultas dinámicas mediante el ORM.
 - Administración de categorías y recursos mediante Django Admin.
-- Operaciones CRUD con persistencia en MariaDB.
-- Pruebas automatizadas utilizando una base independiente.
-- Validación de rutas, plantillas, modelos y relaciones.
+- Migraciones y pruebas del catálogo en un esquema independiente.
 
-## 16. Limitaciones y posibles mejoras
+### Autenticación y control de acceso
 
-ClassroomHub es una aplicación académica orientada al aprendizaje de Django y la persistencia de datos.
+- Registro de cuentas comunes mediante `UserCreationForm`.
+- Inicio de sesión con `LoginView` y manejo del destino `next`.
+- Cierre de sesión mediante `LogoutView` con POST y CSRF.
+- Navegación según el estado de autenticación y el permiso de revisión.
+- Panel protegido con `@login_required` y contador en `request.session`.
+- Revisión de solo lectura protegida con `pages.view_resource`.
+- Grupo `Catalog reviewers` para asignar el permiso a cuentas de prueba.
+- Resumen privado con el total de recursos y el total disponible.
+- Pruebas de registro, credenciales, sesión, CSRF y permisos.
 
-Aunque permite administrar categorías y recursos mediante Django Admin, todavía no cuenta con formularios CRUD públicos independientes del panel administrativo.
+## 16. Alcance y posibles mejoras
 
-Como posibles mejoras futuras se consideran:
+El Laboratorio 08 concentra la administración de datos en Django Admin. Desde la interfaz web, las cuentas pueden consultar el catálogo público y, según su acceso, el panel, el resumen y la página de revisión.
 
-- Implementar formularios propios para registrar recursos.
-- Incorporar autenticación y perfiles para estudiantes.
-- Permitir búsquedas y filtros desde la interfaz pública.
-- Agregar paginación al listado de recursos.
-- Implementar una API REST.
-- Añadir nuevas pruebas automatizadas para operaciones de creación, actualización y eliminación.
-
-Estas funcionalidades corresponden a posibles ampliaciones y no forman parte de lo implementado actualmente.
+Los formularios CRUD fuera de Django Admin, la recuperación de contraseñas por correo, la autenticación multifactor y los proveedores externos de identidad quedan fuera del alcance de esta etapa. Entre las ampliaciones del catálogo se contemplan búsqueda, filtros, paginación y formularios de edición sujetos a permisos específicos.
 
 ## 17. Conclusiones
 
-El Laboratorio 7 permitió ampliar ClassroomHub desde una aplicación basada principalmente en rutas, vistas y plantillas hacia un sistema conectado con una base de datos relacional.
+El Laboratorio 08 amplió ClassroomHub con el sistema de usuarios y sesiones de Django sobre el catálogo persistente del Laboratorio 07. El panel y el resumen privado requieren una sesión autenticada. La página de revisión añade una comprobación de permiso para separar el acceso de las cuentas comunes y el de las cuentas revisoras.
 
-Se implementaron modelos, relaciones, migraciones y consultas mediante el ORM de Django, permitiendo que los recursos educativos se almacenen de forma persistente.
+El uso de `UserCreationForm`, `LoginView` y `LogoutView` permitió aprovechar las herramientas de validación y autenticación del framework. Las pruebas automatizadas comprobaron los flujos de registro y sesión, las restricciones de acceso y la continuidad del catálogo público.
 
-Django Admin facilitó la administración de los registros y permitió comprobar las operaciones CRUD.
+## 18. Verificación final del Laboratorio 08
 
-Finalmente, las diez pruebas automatizadas se ejecutaron correctamente, validando el funcionamiento de las páginas, los modelos y sus relaciones.
+### 18.1. Estado de las migraciones
 
-El proyecto demuestra la importancia de separar responsabilidades, proteger las credenciales, utilizar migraciones y verificar el funcionamiento del sistema mediante pruebas.
+Se ejecutó:
 
-## 18. Verificación final del Laboratorio 7
+```bat
+python manage.py showmigrations auth contenttypes sessions pages
+```
 
-Durante el desarrollo del Laboratorio 7 se realizaron comprobaciones de funcionamiento para validar la conexión entre Django y MariaDB, las operaciones mediante el ORM, las relaciones entre modelos y la persistencia de información.
+Todas las migraciones de las cuatro aplicaciones aparecieron aplicadas. La comprobación `python manage.py makemigrations --check --dry-run` devolvió `No changes detected`.
 
-### 18.1. Operaciones CRUD mediante el ORM
+### 18.2. Comprobación de configuración
 
-Se utilizaron los siguientes métodos:
+```text
+System check identified no issues (0 silenced).
+```
 
-| Método | Operación comprobada |
-|---|---|
-| `objects.create()` | Creación de categorías y recursos |
-| `objects.all()` | Consulta de registros existentes |
-| `objects.filter()` | Filtrado de recursos disponibles |
-| `objects.get()` | Consulta de un recurso específico |
-| `save()` | Actualización de la información de un recurso |
-| `delete()` | Eliminación de registros |
-| `category` | Acceso a la categoría relacionada |
-| `related_name` | Consulta de recursos desde una categoría |
-| `select_related()` | Consulta de recursos junto con sus categorías |
+### 18.3. Registro de una cuenta sin privilegios
 
-Todas las operaciones ejecutadas finalizaron correctamente. Los registros temporales utilizados para comprobar el ORM fueron eliminados al concluir las pruebas.
+En el shell de Django se verificaron los valores de `is_staff`, `is_superuser` y la cantidad de grupos de la cuenta usada para el reto.
 
-### 18.2. Integridad referencial
-
-Se verificó el funcionamiento de `on_delete=models.PROTECT` intentando eliminar una categoría que tenía un recurso relacionado.
-
-Django generó la excepción `ProtectedError`, impidiendo la eliminación.
-
-Posteriormente se comprobó que ambos registros seguían existiendo. Después de eliminar primero el recurso, fue posible eliminar la categoría.
-
-Esto demuestra el funcionamiento de la restricción de integridad entre `Category` y `Resource`.
-
-### 18.3. Persistencia de datos
-
-Se comprobó que los datos permanecen almacenados después de detener y reiniciar el servidor de Django.
-
-Como evidencia, se utilizó un recurso denominado `Quijote`, que continuó apareciendo en la página `/resources/` después de reiniciar la aplicación.
-
-Esto confirma que los recursos no dependen exclusivamente de variables temporales en Python, sino que se recuperan desde MariaDB.
+```text
+False False 0
+```
 
 ### 18.4. Resultado de las pruebas automatizadas
 
-Se ejecutó el comando:
-
-```bash
-python manage.py test pages -v 2
-```
-
-Resultado obtenido:
-
 ```text
-Found 10 test(s).
+Found 30 test(s).
+Creating test database for alias 'default'...
 System check identified no issues (0 silenced).
-
-Ran 10 tests in 0.118s
+..............................
+----------------------------------------------------------------------
+Ran 30 tests in 73.847s
 
 OK
+Destroying test database for alias 'default'...
 ```
 
-Las diez pruebas finalizaron correctamente. Django creó la base temporal `test_classroom_hub`, aplicó las migraciones necesarias y la eliminó al finalizar.
-
-### 18.5. Estado de las migraciones
-
-El proyecto dispone de las siguientes migraciones:
-
-- `0001_initial.py`: creación de los modelos `Category` y `Resource`.
-- `0002_alter_category_id_alter_resource_id.py`: actualización de los campos identificadores.
-
-Se comprobó la sincronización de los modelos mediante:
-
-```bash
-python manage.py makemigrations --check --dry-run
-```
-
-Resultado:
-
-```text
-No changes detected
-```
-
-El campo `resource_type` está implementado en el modelo `Resource` y fue incluido originalmente en `0001_initial.py`. Su incorporación mediante una migración independiente permanece como un punto de ajuste respecto a la secuencia solicitada en el laboratorio.
+**Resultado final: 30 pruebas aprobadas y 0 fallos.** El total incluye las 28 pruebas de la entrega base y las dos pruebas del resumen privado.
 
 ## 19. Estrategia de control de versiones
 
-ClassroomHub se desarrolla en un único repositorio de GitHub, conservando los avances de los laboratorios anteriores y ampliando las funcionalidades progresivamente.
+El proyecto continúa en el repositorio personal `juanlsk29/ClassroomHub`. La rama `laboratorio-8` parte del trabajo del Laboratorio 07 y reúne los cambios de autenticación y autorización en dos etapas.
 
-La estrategia de trabajo consiste en:
+| Etapa | Commit | Estado al documentar |
+|---|---|---|
+| Base del Laboratorio 07 | `f2b794f` — `feat: mostrar recursos persistidos` | Presente en el historial. |
+| Primera parte del Laboratorio 08 | `ee3d347` — `feat: agregar registro, inicio y cierre de sesión y panel privado` | Publicado en `origin/laboratorio-8`. |
+| Segunda parte del Laboratorio 08 | `feat: agregar revisión del catálogo, resumen privado y pruebas de acceso` | Pendiente de crear al redactar el README. |
 
-1. Conservar en `main` las versiones estables.
-2. Crear una rama para cada nueva etapa del proyecto.
-3. Registrar commits que identifiquen los cambios técnicos realizados.
-4. Verificar las funcionalidades y pruebas antes de integrar los cambios.
-5. Utilizar Pull Requests para fusionar cada etapa con `main`.
-6. Crear etiquetas para identificar las versiones finales de los laboratorios.
+El segundo commit reúne la vista de revisión, el resumen privado, las pruebas nuevas y esta documentación. Los grupos, las cuentas y sus asignaciones se configuran en la base de datos de cada instalación. Las credenciales, el archivo `.env`, las cookies de sesión y los datos privados de usuarios quedan fuera del repositorio.
 
-Las ramas previstas son `lab-07`, `lab-08` y `lab-09`, partiendo del trabajo desarrollado en el Laboratorio 6.
+## 20. Estado final del Laboratorio 08
 
-Esta estrategia permite mantener un historial del desarrollo y construir progresivamente una versión definitiva de ClassroomHub.
-
-## 20. Estado final del Laboratorio 7
-
-Se verificó el funcionamiento de la aplicación web, la conexión con MariaDB, las operaciones CRUD, las consultas con relaciones, la protección de integridad referencial y la persistencia después de reiniciar el servidor.
-
-También se confirmó la aplicación de las migraciones existentes y la ejecución satisfactoria de diez pruebas automatizadas.
-
-Queda documentada como particularidad del historial de migraciones la inclusión inicial del campo `resource_type`, en lugar de su incorporación mediante una migración posterior.
+| Componente | Estado |
+|---|---|
+| Catálogo persistente | Conserva los modelos y la conexión a MariaDB del Laboratorio 07. |
+| Autenticación | Registro, login y logout integrados con las herramientas de Django. |
+| Sesiones | Panel privado con contador de visitas. |
+| Autorización | Revisión protegida mediante `pages.view_resource`. |
+| Reto adicional | Resumen privado con conteos del ORM y dos pruebas. |
+| Migraciones | Aplicadas en `auth`, `contenttypes`, `sessions` y `pages`. |
+| Verificación de Django | Cero problemas y ningún cambio pendiente de migración. |
+| Pruebas automatizadas | 30 aprobadas. |
+| Rama de entrega | `laboratorio-8`. |
