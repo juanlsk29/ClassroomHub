@@ -580,3 +580,75 @@ El segundo commit reúne la vista de revisión, el resumen privado, las pruebas 
 | Verificación de Django | Cero problemas y ningún cambio pendiente de migración. |
 | Pruebas automatizadas | 30 aprobadas. |
 | Rama de entrega | `laboratorio-8`. |
+
+
+
+
+
+
+
+
+
+
+
+## Laboratorio 09 — Primer avance
+
+Rama de trabajo: `laboratorio-9`.
+
+### Funcionalidades implementadas
+
+- Formulario `ResourceForm` basado en el modelo existente `Resource`.
+- Lista explícita de campos editables.
+- Validación de título con mínimo tres caracteres.
+- Detalle público de recursos.
+- Creación mediante `CreateView`.
+- Autenticación y permiso `pages.add_resource` obligatorios para crear.
+- Plantilla de formulario preparada para reutilizarse en edición.
+- Navegación y enlaces condicionados por permisos.
+- Conservación de autenticación, sesiones, revisión, FAQ y resumen privado.
+- Conservación de las 30 pruebas anteriores.
+- Uso de la base MariaDB existente, sin nuevos modelos ni migraciones.
+
+### Rutas incorporadas
+
+| Método | Ruta | Acceso |
+|---|---|---|
+| GET | `/resources/<pk>/` | Público |
+| GET | `/resources/new/` | Permiso `pages.add_resource` |
+| POST | `/resources/new/` | Permiso `pages.add_resource` y CSRF |
+
+### Configuración de roles
+
+El grupo `Catalog editors` contiene los permisos `view_resource`,
+`add_resource`, `change_resource` y `delete_resource`.
+
+La asignación del grupo se realiza administrativamente, desde Django Admin
+o el shell local de administración. El registro público no concede permisos.
+
+Las cuentas existentes se reutilizan. Los grupos y sus asignaciones
+se almacenan en MariaDB y no se crean automáticamente al clonar el repositorio.
+
+Las categorías se gestionan en Django Admin:
+`/admin/` → Categories → Add.
+Se utiliza una cuenta administradora existente y se introduce un nombre único
+y, opcionalmente, una descripción.
+
+Para asignar editores desde Admin:
+Users → seleccionar una cuenta existente → añadir `Catalog editors`
+en Groups → Save. No es necesario activar Staff status ni Superuser status.
+
+### Comprobaciones de esta etapa
+
+- Lista y detalle públicos.
+- Detalle inexistente devuelve 404.
+- Creación anónima redirige al login.
+- Cuenta común y revisor sin permiso reciben 403.
+- Editor puede abrir y enviar el formulario.
+- Título corto y categoría inexistente producen errores de validación.
+- Guardado correcto redirige al catálogo.
+- Los datos persisten al reiniciar Django.
+
+### Pendiente para el segundo avance
+
+Edición, eliminación con confirmación, pruebas automatizadas CRUD,
+búsqueda pública opcional, ejercicios finales y documentación consolidada.

@@ -1,9 +1,18 @@
-from django.http import HttpResponse
-from django.shortcuts import render
-from .models import Resource
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.mixins import (
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+)
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse_lazy
+from django.views.generic import CreateView, DetailView
+
+from .forms import ResourceForm
+from .models import Resource
+
+
 def home(request):
     context = {
         "welcome_message": "Explore learning resources and project ideas.",
@@ -11,16 +20,10 @@ def home(request):
     return render(request, "pages/home.html", context)
 
 
-
 def resources(request):
-    resources_list = Resource.objects.select_related("category").all()
-
     context = {
-        "resources": resources_list,
+        "resources": Resource.objects.select_related("category").all(),
     }
-
-    return render(request, "pages/resources.html", context)
-
     return render(request, "pages/resources.html", context)
 
 
@@ -34,21 +37,24 @@ def about(request):
 def contact(request):
     return HttpResponse("Contact information")
 
+
 def faq(request):
     context = {
         "questions": [
             {
                 "question": "What is ClassroomHub?",
-                "answer": "ClassroomHub is a learning portal for students."
+                "answer": "ClassroomHub is a learning portal for students.",
             },
             {
                 "question": "What resources can I find?",
-                "answer": "You can explore programming and web development resources."
+                "answer": (
+                    "You can explore programming and web development resources."
+                ),
             },
         ],
     }
-
     return render(request, "pages/faq.html", context)
+
 
 def signup(request):
     if request.user.is_authenticated:
@@ -76,6 +82,7 @@ def dashboard(request):
         {"visit_count": visit_count},
     )
 
+
 @login_required
 @permission_required("pages.view_resource", raise_exception=True)
 def resource_review(request):
@@ -84,6 +91,7 @@ def resource_review(request):
     }
     return render(request, "pages/review.html", context)
 
+
 @login_required
 def dashboard_summary(request):
     context = {
@@ -91,3 +99,21 @@ def dashboard_summary(request):
         "available_resources": Resource.objects.filter(available=True).count(),
     }
     return render(request, "pages/dashboard_summary.html", context)
+
+
+class ResourceDetailView(DetailView):
+    model = Resource
+    template_name = "pages/resource_detail.html"
+    context_object_name = "resource"
+
+
+class ResourceCreateView(
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+    CreateView,
+):
+    model = Resource
+    form_class = ResourceForm
+    template_name = "pages/resource_form.html"
+    permission_required = "pages.add_resource"
+    success_url = reverse_lazy("pages:resources")

@@ -1,5 +1,6 @@
-from django.urls import path
 from django.contrib.auth import views as auth_views
+from django.urls import path
+
 from . import views
 
 app_name = "pages"
@@ -7,9 +8,24 @@ app_name = "pages"
 urlpatterns = [
     path("", views.home, name="home"),
     path("resources/", views.resources, name="resources"),
-    path("resources/review/", views.resource_review, name="resource-review"),
+    path(
+        "resources/review/",
+        views.resource_review,
+        name="resource-review",
+    ),
+    path(
+        "resources/new/",
+        views.ResourceCreateView.as_view(),
+        name="resource-create",
+    ),
+    path(
+        "resources/<int:pk>/",
+        views.ResourceDetailView.as_view(),
+        name="resource-detail",
+    ),
     path("about/", views.about, name="about"),
-        path("accounts/signup/", views.signup, name="signup"),
+    path("faq/", views.faq, name="faq"),
+    path("accounts/signup/", views.signup, name="signup"),
     path(
         "accounts/login/",
         auth_views.LoginView.as_view(template_name="pages/login.html"),
@@ -21,6 +37,9 @@ urlpatterns = [
         name="logout",
     ),
     path("dashboard/", views.dashboard, name="dashboard"),
-    path("dashboard/summary/", views.dashboard_summary, name="dashboard-summary"),
-    path("faq/", views.faq, name="faq"),
+    path(
+        "dashboard/summary/",
+        views.dashboard_summary,
+        name="dashboard-summary",
+    ),
 ]
