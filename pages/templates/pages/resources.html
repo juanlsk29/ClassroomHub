@@ -6,6 +6,28 @@
     <h2>Learning resources</h2>
     <p>Browse the available learning materials.</p>
 
+    <form method="get" action="{% url 'pages:resources' %}">
+        <label for="resource-search">Search by title:</label>
+
+        <input
+            type="search"
+            id="resource-search"
+            name="q"
+            value="{{ query }}"
+            placeholder="Enter a resource title"
+        >
+
+        <button type="submit">Search</button>
+
+        <a href="{% url 'pages:resources' %}">
+            Clear search
+        </a>
+    </form>
+
+    {% if query %}
+        <p>Search results for: <strong>{{ query }}</strong></p>
+    {% endif %}
+
     {% if perms.pages.add_resource %}
         <p>
             <a href="{% url 'pages:resource-create' %}">
@@ -33,6 +55,10 @@
             {% endif %}
         </article>
     {% empty %}
-        <p>No resources are available.</p>
+        {% if query %}
+            <p>No resources match your search.</p>
+        {% else %}
+            <p>No resources are available.</p>
+        {% endif %}
     {% endfor %}
 {% endblock %}

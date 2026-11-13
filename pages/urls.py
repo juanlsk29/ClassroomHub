@@ -23,6 +23,16 @@ urlpatterns = [
         views.ResourceDetailView.as_view(),
         name="resource-detail",
     ),
+    path(
+        "resources/<int:pk>/edit/",
+        views.ResourceUpdateView.as_view(),
+        name="resource-update",
+    ),
+    path(
+        "resources/<int:pk>/delete/",
+        views.ResourceDeleteView.as_view(),
+        name="resource-delete",
+    ),
     path("about/", views.about, name="about"),
     path("faq/", views.faq, name="faq"),
     path("accounts/signup/", views.signup, name="signup"),

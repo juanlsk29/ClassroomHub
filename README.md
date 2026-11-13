@@ -1,426 +1,894 @@
 # ClassroomHub
 
-**Laboratorio 08 — Autenticación, sesiones y control de acceso**  
+**Laboratorio 09 — Formularios y CRUD con Django: vistas, ModelForm y permisos**
+
+**Aprendiz:** Juan Manuel Quintero Murcia  
+**Ficha:** 3388087  
+**Programa:** Análisis y Desarrollo de Software  
 **Repositorio:** [ClassroomHub](https://github.com/juanlsk29/ClassroomHub)  
-**Rama de entrega:** [`laboratorio-8`](https://github.com/juanlsk29/ClassroomHub/tree/laboratorio-8)
+**Rama de entrega:** [`laboratorio-9`](https://github.com/juanlsk29/ClassroomHub/tree/laboratorio-9)
 
 ## 1. Descripción del proyecto
 
-ClassroomHub es una aplicación web educativa desarrollada con Django que permite consultar recursos de programación y desarrollo de software. El proyecto se ha ampliado en tres etapas.
+ClassroomHub es una aplicación web educativa desarrollada con Django que permite consultar y gestionar recursos organizados por categorías. El proyecto conserva la información en MariaDB y utiliza el sistema de autenticación, sesiones, grupos y permisos de Django.
+
+Su desarrollo se ha realizado de manera progresiva:
 
 | Laboratorio | Avance |
 |---|---|
-| 06 | Creación de rutas, vistas y plantillas HTML, con navegación entre páginas. |
+| 06 | Creación de rutas, vistas, plantillas y navegación entre páginas públicas. |
 | 07 | Integración de MariaDB, modelos `Category` y `Resource`, migraciones, consultas mediante el ORM y administración de datos con Django Admin. |
-| 08 | Registro de usuarios, inicio y cierre de sesión, panel privado, revisión del catálogo mediante permisos y resumen privado de recursos. |
+| 08 | Registro de usuarios, inicio y cierre de sesión, panel privado, contador de visitas, revisión del catálogo mediante permisos y resumen privado. |
+| 09 | Formularios con `ModelForm`, detalle público, creación, actualización y eliminación de recursos mediante vistas genéricas, permisos por operación y búsqueda pública por título. |
 
-El Laboratorio 08 distingue tres tipos de acceso. Cualquier visitante puede consultar el catálogo general. Una cuenta autenticada puede entrar al panel y al resumen privado. Una cuenta con el permiso `pages.view_resource` puede consultar además la página de revisión.
+En el Laboratorio 09, las cuentas autorizadas pueden gestionar recursos desde una interfaz propia de ClassroomHub. Ya no es necesario utilizar Django Admin para cada modificación del catálogo.
+
+Los visitantes continúan teniendo acceso a la lista, el detalle y la búsqueda. Las categorías siguen administrándose exclusivamente desde Django Admin.
 
 ## 2. Tecnologías y versiones
 
-| Componente | Tecnología |
+| Componente | Tecnología o versión |
 |---|---|
 | Lenguaje | Python 3.14.5 |
-| Framework | Django 6.1.3, versión documentada en el Laboratorio 07 |
-| Motor de base de datos | MariaDB 13.0.2, instalación documentada en el Laboratorio 07 |
+| Framework | Django 6.1.3 |
+| Motor de base de datos | MariaDB 13.0.2 |
+| Controlador SQL | mysqlclient 2.3.0 |
+| Variables de entorno | python-dotenv 1.2.4 |
 | Interfaz | HTML, CSS y plantillas de Django |
-| Entorno virtual | `venv` |
-| Controlador SQL | `mysqlclient` |
-| Variables de entorno | `python-dotenv` |
-| Administración | Django Admin |
-| Autenticación y autorización | `django.contrib.auth` |
+| Formularios | `forms.Form`, `forms.ModelForm` y `UserCreationForm` |
+| Vistas genéricas | `DetailView`, `CreateView`, `UpdateView` y `DeleteView` |
+| Autenticación | `django.contrib.auth` |
+| Autorización | Permisos, grupos, decoradores y mixins |
 | Sesiones | `django.contrib.sessions` |
-| Pruebas automatizadas | `TestCase` y `Client` de Django |
+| Administración | Django Admin |
+| Pruebas | `TestCase` y `Client` de Django |
 | Control de versiones | Git y GitHub |
 
-Django utiliza `django.db.backends.mysql` para conectarse a MariaDB. El ORM permite consultar los modelos mediante código Python y delega en Django la generación de las consultas SQL.
+Django utiliza `django.db.backends.mysql` para conectarse a MariaDB. El ORM permite consultar y modificar los registros mediante Python.
+
+### Entorno utilizado
+
+En la ejecución registrada del computador personal, el intérprete utilizado fue:
+
+```text
+C:\Python314\python.exe
+```
+
+Aunque la terminal mostraba el indicador `(.venv)`, la comprobación con `where python` y las ubicaciones de los paquetes indicaron que se estaba utilizando el intérprete global.
+
+El proyecto y las pruebas funcionaron correctamente con ese entorno. Para reproducir la instalación en otro equipo, se puede preparar un entorno virtual local con las dependencias de `requirements.txt`.
 
 ## 3. Estructura del proyecto
 
-```text
-laboratorio-08/
-├── config/
-│   ├── __init__.py
-│   ├── settings.py
-│   ├── urls.py
-│   ├── asgi.py
-│   └── wsgi.py
-├── pages/
-│   ├── migrations/
-│   │   ├── __init__.py
-│   │   ├── 0001_initial.py
-│   │   └── 0002_alter_category_id_alter_resource_id.py
-│   ├── templates/
-│   │   └── pages/
-│   │       ├── base.html
-│   │       ├── home.html
-│   │       ├── resources.html
-│   │       ├── about.html
-│   │       ├── faq.html
-│   │       ├── signup.html
-│   │       ├── login.html
-│   │       ├── dashboard.html
-│   │       ├── dashboard_summary.html
-│   │       └── review.html
-│   ├── __init__.py
-│   ├── admin.py
-│   ├── apps.py
-│   ├── models.py
-│   ├── tests.py
-│   ├── urls.py
-│   └── views.py
-├── .env.example
-├── .gitignore
-├── manage.py
-├── requirements.txt
-└── README.md
-```
+Los principales archivos se organizan de la siguiente manera:
 
-El archivo `.env` y la carpeta `.venv` se preparan en cada equipo y se excluyen de Git.
+| Ubicación | Contenido |
+|---|---|
+| Raíz | `manage.py`, `requirements.txt`, `README.md`, `.gitignore`, `.env.example` y configuración local `.env`. |
+| `config/` | `__init__.py`, `settings.py`, `urls.py`, `asgi.py` y `wsgi.py`. |
+| `pages/` | `__init__.py`, `admin.py`, `apps.py`, `models.py`, `forms.py`, `views.py`, `urls.py` y `tests.py`. |
+| `pages/migrations/` | `__init__.py`, `0001_initial.py` y `0002_alter_category_id_alter_resource_id.py`. |
+| `pages/templates/pages/` | Plantillas de navegación, catálogo, autenticación, panel, revisión y CRUD. |
+
+### Plantillas
+
+| Plantilla | Responsabilidad |
+|---|---|
+| `base.html` | Estructura común, navegación y cierre de sesión. |
+| `home.html` | Página de inicio. |
+| `about.html` | Información sobre el proyecto. |
+| `faq.html` | Preguntas frecuentes. |
+| `resources.html` | Catálogo público y búsqueda por título. |
+| `resource_detail.html` | Detalle de un recurso y enlaces según permisos. |
+| `resource_form.html` | Formulario compartido por creación y edición. |
+| `resource_confirm_delete.html` | Confirmación de eliminación. |
+| `signup.html` | Registro de cuentas comunes. |
+| `login.html` | Inicio de sesión. |
+| `dashboard.html` | Panel privado y contador de visitas. |
+| `dashboard_summary.html` | Total de recursos y total disponible. |
+| `review.html` | Revisión del catálogo con permiso de lectura. |
 
 ### Responsabilidades principales
 
-| Archivo o directorio | Responsabilidad |
+| Archivo | Responsabilidad |
 |---|---|
-| `config/settings.py` | Configura la base de datos, las aplicaciones instaladas, el middleware y los destinos de autenticación. |
-| `config/urls.py` | Conecta Django Admin y las rutas de la aplicación `pages`. |
-| `pages/models.py` | Define las categorías, los recursos y la relación entre ambos. |
-| `pages/views.py` | Atiende las solicitudes del catálogo, el registro, el panel, el resumen y la revisión. |
-| `pages/urls.py` | Define las rutas públicas y privadas y conecta `LoginView` y `LogoutView`. |
-| `pages/admin.py` | Configura la administración de categorías y recursos. |
-| `pages/templates/pages/` | Contiene las plantillas HTML y la navegación compartida. |
-| `pages/migrations/` | Conserva el historial de cambios de los modelos de la aplicación. |
-| `pages/tests.py` | Contiene las pruebas del catálogo, autenticación, sesiones, permisos y resumen privado. |
-| `requirements.txt` | Registra las dependencias necesarias para instalar el proyecto. |
-| `.env.example` | Sirve como referencia para crear la configuración local. |
+| `config/settings.py` | Configuración de base de datos, aplicaciones, middleware, plantillas y autenticación. |
+| `config/urls.py` | Conexión de Django Admin y las rutas de `pages`. |
+| `pages/models.py` | Definición de categorías, recursos y su relación. |
+| `pages/forms.py` | Campos editables y validación de `ResourceForm`. |
+| `pages/views.py` | Páginas anteriores, búsqueda y vistas CRUD. |
+| `pages/urls.py` | Rutas públicas, privadas y de gestión. |
+| `pages/admin.py` | Administración de categorías y recursos. |
+| `pages/tests.py` | Pruebas anteriores, CRUD, permisos, validación, CSRF y búsqueda. |
+| `requirements.txt` | Dependencias utilizadas por el proyecto. |
+| `.env.example` | Referencia para configurar la conexión local. |
 
 ## 4. Instalación y configuración
 
 ### Requisitos previos
 
-- Una instalación de Python compatible con las dependencias del proyecto.
-- MariaDB o MySQL en ejecución.
-- Git y una terminal de comandos.
-- Acceso para configurar una base de desarrollo y una cuenta SQL local.
+- Python compatible con las dependencias del proyecto.
+- MariaDB en ejecución.
+- Git instalado.
+- Acceso a la base existente y al usuario SQL de la aplicación.
+- Una terminal ubicada en la carpeta que contiene `manage.py`.
 
 ### Clonar la rama del laboratorio
 
+Para obtener una nueva copia del código:
+
 ```bat
-git clone --branch laboratorio-8 https://github.com/juanlsk29/ClassroomHub.git laboratorio-08
-cd laboratorio-08
+git clone --branch laboratorio-9 https://github.com/juanlsk29/ClassroomHub.git laboratorio-09
+cd laboratorio-09
 ```
 
-### Crear y activar el entorno virtual
+Si ya se tiene el proyecto local, se utiliza esa carpeta sin clonarlo nuevamente.
 
-En Windows CMD:
+### Preparar un entorno virtual
+
+Para una instalación nueva:
 
 ```bat
 python -m venv .venv
 .venv\Scripts\activate.bat
+python -m pip install -r requirements.txt
 ```
 
-En PowerShell, el comando de activación es:
+En PowerShell, la activación se realiza con:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-### Instalar las dependencias
+Los entornos virtuales se crean en cada equipo; no se reutilizan copiando una carpeta de otro computador.
 
-Con el entorno virtual activo:
+### Comprobar el intérprete y las dependencias
+
+En CMD:
 
 ```bat
-python -m pip install -r requirements.txt
+where python
+python --version
 python -m django --version
+python -m pip show mysqlclient python-dotenv
 ```
 
-Si ya existe un entorno virtual funcional en la carpeta del proyecto, basta con activarlo e instalar las dependencias que falten.
+Si se utiliza un entorno virtual, la primera ruta de `where python` debe corresponder al intérprete de ese entorno.
+
+### Continuidad del proyecto
+
+El Laboratorio 09 continúa el proyecto de los laboratorios anteriores.
+
+No se ejecutan nuevamente:
+
+```text
+django-admin startproject
+python manage.py startapp
+```
+
+Tampoco se sustituye MariaDB por SQLite ni se eliminan tablas para comenzar el CRUD.
 
 ## 5. Configuración de MariaDB
 
-### Crear la base de desarrollo
+### Base existente
 
-Desde una cuenta administradora del motor de base de datos:
+Se reutiliza la base que ya contiene el catálogo, las cuentas, los grupos y las sesiones de los laboratorios anteriores.
 
-```sql
-CREATE DATABASE IF NOT EXISTS classroom_hub
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_unicode_ci;
-```
+| Parámetro | Valor |
+|---|---|
+| Base de desarrollo | `classroom_hub` |
+| Usuario SQL | `classroomhub_user` |
+| Host | `127.0.0.1` |
+| Puerto | `3307` |
+| Motor | MariaDB 13.0.2 |
+| Base de pruebas | `test_classroom_hub` |
 
-### Crear la cuenta SQL de la aplicación
+No es necesario crear nuevamente la base ni el usuario SQL en el computador utilizado para esta entrega.
 
-Si ya existe el usuario del Laboratorio 07, se puede reutilizar. Para una instalación nueva:
+Clonar el repositorio descarga el código, pero no copia automáticamente los registros de MariaDB.
 
-```sql
-CREATE USER 'classroomhub_user'@'127.0.0.1'
-IDENTIFIED BY 'CONTRASENA_PRIVADA';
+### Variables de entorno
 
-GRANT ALL PRIVILEGES ON classroom_hub.*
-TO 'classroomhub_user'@'127.0.0.1';
+El archivo `.env` conserva la configuración de conexión:
 
-GRANT ALL PRIVILEGES ON test_classroom_hub.*
-TO 'classroomhub_user'@'127.0.0.1';
-```
-
-Reemplaza `CONTRASENA_PRIVADA` por una clave local. Los permisos se limitan a los esquemas de desarrollo y pruebas. El ejecutor de Django crea y elimina el esquema de pruebas durante una ejecución normal.
-
-### Configurar las variables de entorno
-
-En CMD, si todavía no existe `.env`:
-
-```bat
-copy .env.example .env
-```
-
-Ejemplo de configuración local:
-
-```env
+```dotenv
 DB_NAME=classroom_hub
 DB_USER=classroomhub_user
-DB_PASSWORD=CONTRASENA_PRIVADA
+DB_PASSWORD=replace_with_a_private_password
 DB_HOST=127.0.0.1
 DB_PORT=3307
 ```
 
-El puerto `3307` corresponde a la instalación independiente de MariaDB documentada en el Laboratorio 07. Ajusta el valor si el servidor de tu equipo escucha en otro puerto.
+Esta es la configuración utilizada en el entorno escolar local. En otra instalación, los valores deben coincidir con su servidor y su usuario SQL.
 
-La cuenta `classroomhub_user` conecta Django con MariaDB. Las cuentas de ClassroomHub se crean mediante el formulario **Sign up** y se administran con el sistema de usuarios de Django. Guarda las credenciales reales solo en la configuración local y conserva `.env` en `.gitignore`.
+La cuenta `classroomhub_user` conecta Django con MariaDB. Es independiente de las cuentas utilizadas para iniciar sesión en ClassroomHub.
+
+### Comprobar la conexión
+
+Ejecutar:
+
+```bat
+python manage.py shell
+```
+
+Dentro del shell:
+
+```python
+from django.db import connection
+
+cursor = connection.cursor()
+cursor.execute("SELECT DATABASE(), VERSION(), @@port")
+print(cursor.fetchone())
+cursor.close()
+```
+
+Resultado comprobado en el equipo:
+
+```text
+('classroom_hub', '13.0.2-MariaDB', 3307)
+```
+
+Para salir:
+
+```python
+exit()
+```
+
+### Permisos para las pruebas
+
+El usuario SQL necesita acceso al esquema de pruebas. Si ese permiso no existe, una cuenta administradora de MariaDB puede concederlo con:
+
+```sql
+GRANT ALL PRIVILEGES ON test_classroom_hub.*
+TO 'classroomhub_user'@'127.0.0.1';
+```
+
+La base de pruebas es descartable y permanece separada de la base de desarrollo.
 
 ## 6. Modelos y relaciones
 
-### Modelo `Category`
+El laboratorio reutiliza `Category` y `Resource` sin añadir nuevos modelos.
 
-Representa las categorías del catálogo.
+### Modelo `Category`
 
 | Campo | Tipo | Descripción |
 |---|---|---|
 | `id` | Clave primaria | Identificador de la categoría. |
-| `name` | `CharField` | Nombre único de la categoría. |
-| `description` | `TextField` | Descripción opcional. |
+| `name` | `CharField(max_length=80, unique=True)` | Nombre único. |
+| `description` | `TextField(blank=True)` | Descripción opcional. |
 
-Las categorías se ordenan alfabéticamente por nombre.
+Las categorías se ordenan por nombre. Su representación mediante `__str__()` devuelve el nombre.
 
 ### Modelo `Resource`
-
-Representa un recurso educativo almacenado en el catálogo.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
 | `id` | Clave primaria | Identificador del recurso. |
-| `title` | `CharField` | Título del recurso. |
-| `description` | `TextField` | Descripción opcional. |
-| `available` | `BooleanField` | Indica si el recurso está disponible. |
-| `category` | `ForeignKey` | Categoría a la que pertenece el recurso. |
-| `created_at` | `DateTimeField` | Fecha de creación. |
-| `resource_type` | `CharField` | Tipo de recurso, de diligenciamiento opcional. |
+| `title` | `CharField(max_length=150)` | Título obligatorio. |
+| `description` | `TextField(blank=True)` | Descripción opcional. |
+| `available` | `BooleanField(default=True)` | Disponibilidad. |
+| `category` | `ForeignKey` | Categoría asociada. |
+| `created_at` | `DateTimeField(auto_now_add=True)` | Fecha automática de creación. |
+| `resource_type` | `CharField(max_length=40, blank=True)` | Tipo de recurso opcional. |
+
+Los recursos se ordenan por título. Su representación mediante `__str__()` devuelve el título.
 
 ### Relación entre los modelos
 
-`Category` y `Resource` tienen una relación **uno a muchos**. Una categoría puede contener varios recursos y cada recurso pertenece a una categoría. La clave foránea utiliza `on_delete=models.PROTECT` para impedir que se elimine una categoría con recursos asociados. `related_name="resources"` permite acceder a ellos mediante `category.resources`.
+La relación es uno a muchos:
+
+- Una categoría puede contener varios recursos.
+- Cada recurso pertenece a una categoría.
+- `related_name="resources"` permite consultar `category.resources.all()`.
+- `on_delete=models.PROTECT` impide eliminar una categoría mientras tenga recursos asociados.
+- Eliminar un recurso no elimina su categoría.
 
 ### Usuarios, grupos y sesiones
 
-El Laboratorio 08 usa el modelo estándar de Django, accesible mediante `get_user_model()`. Las aplicaciones `auth`, `contenttypes` y `sessions` administran las tablas de usuarios, grupos, permisos y sesiones. La relación entre cuentas y grupos permite conceder el permiso de revisión sin modificar los modelos del catálogo.
+Se conserva el modelo de usuario de Django, accesible mediante `get_user_model()`.
 
-## 7. Migraciones de la base de datos
+Las aplicaciones de autenticación y sesiones administran sus propias tablas. No se añaden campos de usuario ni modelos de autenticación personalizados para implementar el CRUD.
 
-### Aplicar las migraciones
+## 7. Migraciones
 
-```bat
-python manage.py migrate
-```
-
-### Consultar su estado
+### Estado de las migraciones de `pages`
 
 ```bat
-python manage.py showmigrations auth contenttypes sessions pages
+python manage.py showmigrations pages
 ```
 
-En la comprobación del Laboratorio 08, todas las migraciones consultadas aparecieron con `[X]`.
+Resultado:
 
-| Aplicación | Migraciones aplicadas |
+```text
+pages
+ [X] 0001_initial
+ [X] 0002_alter_category_id_alter_resource_id
+```
+
+| Migración | Responsabilidad |
 |---|---|
-| `auth` | De `0001_initial` a `0012_alter_user_first_name_max_length`. |
-| `contenttypes` | `0001_initial` y `0002_remove_content_type_name`. |
-| `sessions` | `0001_initial`. |
-| `pages` | `0001_initial` y `0002_alter_category_id_alter_resource_id`. |
+| `0001_initial` | Crea `Category` y `Resource`. En este proyecto ya incluye `resource_type`. |
+| `0002_alter_category_id_alter_resource_id` | Actualiza los tipos de los identificadores de ambos modelos. |
 
-La primera migración de `pages` crea los modelos del catálogo. La segunda actualiza los identificadores de `Category` y `Resource`. El campo `resource_type` ya figuraba en la migración inicial de este proyecto.
-
-### Comprobar la sincronización
+### Comprobar cambios pendientes
 
 ```bat
 python manage.py makemigrations --check --dry-run
 ```
 
-Resultado obtenido:
+Resultado:
 
 ```text
 No changes detected
 ```
 
-El Laboratorio 08 reutiliza los modelos y las migraciones existentes. Las tablas de autenticación y sesiones se gestionan con las migraciones incluidas en Django.
+### Consultar operaciones pendientes
 
-## 8. Arquitectura MTV y funcionamiento de las vistas
+```bat
+python manage.py migrate --plan
+```
+
+En la base utilizada no había operaciones pendientes.
+
+El Laboratorio 09 añade formularios, vistas, rutas, plantillas y pruebas sobre modelos existentes. Por eso no requiere una migración nueva.
+
+En otra instalación, las migraciones pendientes se revisan antes de ejecutar:
+
+```bat
+python manage.py migrate
+```
+
+## 8. Arquitectura MTV
 
 ### Model
 
-`Category` y `Resource` representan los datos del catálogo. Django aporta los modelos de usuario, grupo y permiso y el almacenamiento de sesiones.
+`Category` y `Resource` representan los datos del catálogo y sus relaciones. El ORM permite consultar, crear, actualizar y eliminar registros persistidos en MariaDB.
 
 ### Template
 
-`base.html` define la estructura común de las páginas. La navegación muestra **Log in** y **Sign up** para visitantes. Las cuentas autenticadas ven **Dashboard** y **Log out**. **Review** aparece cuando la cuenta tiene `pages.view_resource`.
+Las plantillas generan la interfaz HTML.
+
+`base.html` mantiene la navegación común. Los enlaces de gestión aparecen según los permisos del usuario:
+
+- `Add resource` requiere `pages.add_resource`.
+- `Edit resource` requiere `pages.change_resource`.
+- `Delete resource` requiere `pages.delete_resource`.
+- `Review` requiere `pages.view_resource`.
 
 ### View
 
-Las vistas reciben la solicitud, comprueban el acceso cuando corresponde y devuelven una respuesta. `resources()` consulta los recursos mediante el ORM y los envía a `resources.html`. `resource_review()` también consulta el catálogo y protege la operación mediante dos decoradores.
+Las vistas reciben las solicitudes, comprueban el acceso y generan las respuestas.
 
-### Identificación, autenticación y autorización
+Se combinan vistas basadas en funciones y vistas genéricas basadas en clases:
 
-| Concepto | Aplicación en ClassroomHub |
+| Vista | Tipo | Responsabilidad |
+|---|---|---|
+| `home` | Función | Página de inicio. |
+| `resources` | Función | Catálogo y búsqueda. |
+| `signup` | Función | Registro sin privilegios. |
+| `dashboard` | Función | Panel y contador de visitas. |
+| `dashboard_summary` | Función | Conteos privados del catálogo. |
+| `resource_review` | Función | Revisión protegida. |
+| `ResourceDetailView` | `DetailView` | Detalle público. |
+| `ResourceCreateView` | `CreateView` | Creación con permiso. |
+| `ResourceUpdateView` | `UpdateView` | Actualización con permiso. |
+| `ResourceDeleteView` | `DeleteView` | Confirmación y eliminación con permiso. |
+
+### Formularios
+
+`ResourceForm` conecta los campos editables de `Resource` con los formularios HTML.
+
+Las vistas de creación y edición reutilizan tanto el formulario como la plantilla, evitando duplicar reglas de validación.
+
+## 9. Formularios, validación y procesamiento de solicitudes
+
+### Diferencia entre GET y POST
+
+| Método | Uso |
 |---|---|
-| Identificación | La persona indica qué cuenta quiere utilizar mediante su nombre de usuario. |
-| Autenticación | Django verifica las credenciales y establece la identidad de la cuenta para las solicitudes siguientes. |
-| Autorización | Django comprueba si esa cuenta tiene el permiso necesario para consultar la página de revisión. |
+| GET | Consultar el catálogo, buscar, mostrar detalles y presentar formularios. |
+| POST | Enviar datos para crear, editar o eliminar recursos. |
 
-### Registro e inicio de sesión
+Una visita a una URL de eliminación no borra el recurso. La eliminación requiere el envío del formulario de confirmación.
 
-1. `signup()` presenta `UserCreationForm` y procesa su envío por POST.
-2. El formulario valida el nombre de usuario y las contraseñas. Cuando los datos son válidos, guarda una cuenta común con una contraseña procesada mediante un hash y redirige a login.
-3. `LoginView` verifica las credenciales y abre la sesión. Si existe un destino `next` válido, lo usa para la redirección. En los demás casos abre el panel.
-4. `request.user` identifica a la cuenta de la solicitud. `request.session` almacena el contador de visitas al panel.
-5. `LogoutView` recibe el formulario POST, invalida la sesión y redirige a la página de inicio.
+### Formularios con y sin datos
 
-Los formularios de registro, login y logout incluyen `{% csrf_token %}`. El middleware de sesiones permite recuperar la sesión a partir de su cookie, y el middleware de autenticación establece `request.user`. `SessionMiddleware` debe ejecutarse antes de `AuthenticationMiddleware`.
+- Un formulario sin datos asociados está sin vincular: `is_bound` es `False`.
+- Un formulario construido con datos está vinculado: `is_bound` es `True`.
+- `is_valid()` comprueba si los datos cumplen las reglas.
+- Después de una validación correcta, `cleaned_data` contiene los valores normalizados.
+- Los errores se consultan mediante `errors`.
 
-### Destinos de autenticación
+Validar un formulario no guarda automáticamente el registro. El guardado ocurre cuando se ejecuta `save()`.
 
-| Ajuste | Ruta nombrada | Función |
+### Implementación de `ResourceForm`
+
+```python
+from django import forms
+
+from .models import Resource
+
+
+class ResourceForm(forms.ModelForm):
+    class Meta:
+        model = Resource
+        fields = [
+            "title",
+            "description",
+            "resource_type",
+            "category",
+            "available",
+        ]
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 4}),
+        }
+
+    def clean_title(self):
+        title = self.cleaned_data["title"].strip()
+
+        if len(title) < 3:
+            raise forms.ValidationError(
+                "Title must contain at least 3 characters."
+            )
+
+        return title
+```
+
+### Campos permitidos
+
+| Campo | Editable |
+|---|---|
+| `title` | Sí |
+| `description` | Sí |
+| `resource_type` | Sí |
+| `category` | Sí |
+| `available` | Sí |
+| `id` | No |
+| `created_at` | No |
+
+La lista explícita de campos evita exponer automáticamente campos internos al ampliar el modelo.
+
+### Validaciones
+
+- El título es obligatorio.
+- El título admite como máximo 150 caracteres.
+- El título debe contener al menos tres caracteres después de normalizar espacios exteriores.
+- La categoría debe corresponder a un registro existente.
+- El tipo de recurso admite como máximo 40 caracteres.
+- `available` se procesa como un valor booleano.
+- Los errores se muestran en el formulario sin guardar información inválida.
+
+La longitud mínima del título se valida en `ResourceForm`. Una inserción directa mediante el ORM no ejecuta automáticamente `clean_title()`.
+
+### Protección CSRF
+
+Los formularios POST incluyen:
+
+```html
+{% csrf_token %}
+```
+
+Se conserva `CsrfViewMiddleware`. Las pruebas con `Client(enforce_csrf_checks=True)` comprueban el rechazo de solicitudes sin token.
+
+### Post/Redirect/Get
+
+Después de un guardado correcto:
+
+1. El navegador envía POST.
+2. Django comprueba permisos y valida el formulario.
+3. Se guarda el registro.
+4. La respuesta redirige a `pages:resources`.
+5. El navegador solicita el catálogo mediante GET.
+
+La recarga del catálogo no vuelve a enviar el formulario anterior.
+
+## 10. Implementación del CRUD
+
+### Consulta pública
+
+`ResourceDetailView` presenta un recurso utilizando la PK de la URL.
+
+```python
+class ResourceDetailView(DetailView):
+    model = Resource
+    template_name = "pages/resource_detail.html"
+    context_object_name = "resource"
+```
+
+Si el recurso no existe, devuelve HTTP 404.
+
+Los títulos del catálogo enlazan al detalle mediante nombres de rutas y `resource.pk`.
+
+### Creación
+
+```python
+class ResourceCreateView(
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+    CreateView,
+):
+    model = Resource
+    form_class = ResourceForm
+    template_name = "pages/resource_form.html"
+    permission_required = "pages.add_resource"
+    success_url = reverse_lazy("pages:resources")
+```
+
+La creación exige autenticación y `pages.add_resource`.
+
+Un formulario válido crea un registro y redirige al catálogo. Uno inválido vuelve a mostrarse con errores.
+
+### Actualización
+
+```python
+class ResourceUpdateView(
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+    UpdateView,
+):
+    model = Resource
+    form_class = ResourceForm
+    template_name = "pages/resource_form.html"
+    permission_required = "pages.change_resource"
+    success_url = reverse_lazy("pages:resources")
+```
+
+`UpdateView` obtiene el recurso existente y presenta sus datos.
+
+El guardado modifica esa misma fila:
+
+- Conserva la PK.
+- No crea un duplicado.
+- Permite cambiar título, descripción, tipo, categoría y disponibilidad.
+- Si la validación falla, conserva los valores anteriores en la base.
+
+### Eliminación
+
+```python
+class ResourceDeleteView(
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+    DeleteView,
+):
+    model = Resource
+    template_name = "pages/resource_confirm_delete.html"
+    permission_required = "pages.delete_resource"
+    success_url = reverse_lazy("pages:resources")
+```
+
+El flujo de la interfaz es:
+
+1. GET presenta el recurso y solicita confirmación.
+2. `Cancel` regresa al detalle sin modificar datos.
+3. `Confirm deletion` envía POST con CSRF.
+4. La vista comprueba autorización y elimina el recurso.
+5. Se redirige al catálogo.
+
+La eliminación conserva la categoría y los demás recursos.
+
+## 11. Autenticación, grupos y permisos
+
+### Conceptos
+
+| Concepto | Aplicación |
+|---|---|
+| Identificación | El usuario indica el nombre de su cuenta. |
+| Autenticación | Django comprueba las credenciales y establece la sesión. |
+| Autorización | Django comprueba si la cuenta puede ejecutar una operación. |
+
+Iniciar sesión no concede automáticamente permisos para modificar recursos.
+
+### Permisos por operación
+
+| Operación | Permiso |
+|---|---|
+| Revisión del catálogo | `pages.view_resource` |
+| Creación | `pages.add_resource` |
+| Edición | `pages.change_resource` |
+| Eliminación | `pages.delete_resource` |
+
+### Grupos
+
+| Grupo | Permisos sobre `Resource` |
+|---|---|
+| `Catalog reviewers` | `view_resource` |
+| `Catalog editors` | `view_resource`, `add_resource`, `change_resource`, `delete_resource` |
+
+El permiso de creación no concede por sí solo autorización para editar o eliminar.
+
+### Matriz de acceso
+
+| Operación | Visitante | Cuenta común | Revisor | Editor |
+|---|---|---|---|---|
+| Consultar lista | Sí | Sí | Sí | Sí |
+| Consultar detalle | Sí | Sí | Sí | Sí |
+| Buscar por título | Sí | Sí | Sí | Sí |
+| Entrar al panel | No | Sí | Sí | Sí |
+| Consultar resumen privado | No | Sí | Sí | Sí |
+| Abrir revisión | No | No | Sí | Sí |
+| Crear recursos | No | No | No | Sí |
+| Editar recursos | No | No | No | Sí |
+| Eliminar recursos | No | No | No | Sí |
+
+### Comportamiento de las vistas protegidas
+
+- Visitante anónimo: redirección al login.
+- Cuenta autenticada sin permiso: HTTP 403.
+- Cuenta autorizada: acceso a la operación.
+- Cuenta autorizada que solicita un recurso inexistente: HTTP 404.
+
+`LoginRequiredMixin` se coloca antes de `PermissionRequiredMixin`.
+
+### Cuentas reutilizadas
+
+| Cuenta | Función |
+|---|---|
+| `pc` | Administración mediante Django Admin; cuenta staff y superusuaria. |
+| `Juan` | Editor mediante `Catalog editors`, sin staff ni superusuario. |
+| `reader_demo` | Revisor mediante `Catalog reviewers`, sin privilegios de edición. |
+
+Se reutilizaron las cuentas existentes. No fue necesario crear cuentas permanentes adicionales para completar el laboratorio.
+
+### Registro público
+
+El registro conserva `UserCreationForm` y crea cuentas comunes.
+
+No permite asignar:
+
+- Grupos privilegiados.
+- Permisos de gestión.
+- Estado de staff.
+- Estado de superusuario.
+
+Los grupos y permisos se asignan administrativamente.
+
+### Visibilidad de enlaces
+
+Ocultar enlaces mejora la interfaz, pero no constituye la protección principal.
+
+Las vistas comprueban permisos aunque una persona escriba directamente la URL o envíe un POST manual.
+
+## 12. Rutas principales
+
+| Método | Ruta | Acceso y función |
 |---|---|---|
-| `LOGIN_URL` | `pages:login` | Envía al login a un visitante que solicita una vista privada. |
-| `LOGIN_REDIRECT_URL` | `pages:dashboard` | Define el destino predeterminado tras un login correcto. |
-| `LOGOUT_REDIRECT_URL` | `pages:home` | Define el destino tras cerrar sesión. |
+| GET | `/` | Inicio público. |
+| GET | `/resources/` | Catálogo público. |
+| GET | `/resources/?q=texto` | Búsqueda pública. |
+| GET | `/resources/<pk>/` | Detalle público. |
+| GET | `/resources/new/` | Formulario de creación con `add_resource`. |
+| POST | `/resources/new/` | Guardar un recurso con `add_resource` y CSRF. |
+| GET | `/resources/<pk>/edit/` | Formulario de edición con `change_resource`. |
+| POST | `/resources/<pk>/edit/` | Guardar cambios con `change_resource` y CSRF. |
+| GET | `/resources/<pk>/delete/` | Confirmación con `delete_resource`. |
+| POST | `/resources/<pk>/delete/` | Eliminar con `delete_resource` y CSRF. |
+| GET | `/resources/review/` | Revisión con `view_resource`. |
+| GET | `/about/` | Información del proyecto. |
+| GET | `/faq/` | Preguntas frecuentes. |
+| GET, POST | `/accounts/signup/` | Registro de cuentas comunes. |
+| GET, POST | `/accounts/login/` | Inicio de sesión. |
+| POST | `/accounts/logout/` | Cierre de sesión con CSRF. |
+| GET | `/dashboard/` | Panel privado y contador de visitas. |
+| GET | `/dashboard/summary/` | Conteos privados del catálogo. |
+| Según operación | `/admin/` | Administración para personal autorizado. |
 
-## 9. Rutas principales
+`<pk>` representa el identificador real del recurso.
 
-| Ruta | Acceso | Descripción |
-|---|---|---|
-| `/` | Público | Página de inicio. |
-| `/resources/` | Público | Listado de recursos almacenados en MariaDB. |
-| `/about/` | Público | Información sobre el propósito del proyecto. |
-| `/faq/` | Público | Preguntas frecuentes, página heredada del proyecto. |
-| `/accounts/signup/` | Visitante | Formulario para crear una cuenta común. |
-| `/accounts/login/` | Público | Formulario de inicio de sesión. |
-| `/accounts/logout/` | POST con CSRF | Cierre de sesión mediante el botón del menú. Una solicitud GET devuelve HTTP `405`. |
-| `/dashboard/` | Cuenta autenticada | Panel privado con nombre de usuario y contador de visitas. |
-| `/dashboard/summary/` | Cuenta autenticada | Resumen de solo lectura con el total de recursos y el total disponible. |
-| `/resources/review/` | Cuenta autenticada con `pages.view_resource` | Página de revisión del catálogo de solo lectura. |
-| `/admin/` | Personal autorizado | Administración de categorías, recursos, usuarios y grupos. |
+### Nombres de rutas del CRUD
 
-Las rutas de `pages` utilizan nombres como `pages:dashboard`, `pages:dashboard-summary` y `pages:resource-review` para generar enlaces y redirecciones desde el código y las plantillas.
+| Nombre | Ruta |
+|---|---|
+| `pages:resources` | `/resources/` |
+| `pages:resource-detail` | `/resources/<pk>/` |
+| `pages:resource-create` | `/resources/new/` |
+| `pages:resource-update` | `/resources/<pk>/edit/` |
+| `pages:resource-delete` | `/resources/<pk>/delete/` |
 
-## 10. Django Admin, usuarios y permisos
+Las redirecciones de las vistas genéricas utilizan `reverse_lazy("pages:resources")`.
 
-### Administración del catálogo
+## 13. Django Admin y configuración de grupos
 
-Django Admin permite crear, consultar, actualizar y eliminar categorías y recursos de acuerdo con los permisos de la cuenta administradora. Los cambios quedan almacenados en MariaDB y se reflejan en `/resources/`. El panel también ofrece búsquedas y filtros según la configuración de `pages/admin.py`.
+### Crear categorías
 
-### Crear una cuenta común
+1. Iniciar sesión en `/admin/` con la cuenta administradora existente.
+2. Abrir **Categories**.
+3. Seleccionar **Add**.
+4. Introducir un nombre único.
+5. Añadir una descripción opcional.
+6. Guardar.
 
-1. Abre `/accounts/signup/` sin iniciar sesión.
-2. Escribe un nombre de usuario y confirma la contraseña.
-3. Envía el formulario. Si los datos son válidos, Django crea la cuenta y abre el login.
-4. Ingresa con esa cuenta para comprobar el acceso al panel.
+Las categorías quedan disponibles en los formularios de recursos.
 
-### Crear el grupo `Catalog reviewers`
+### Configurar revisores
 
-1. Si necesitas una cuenta administradora, ejecuta `python manage.py createsuperuser`.
-2. Abre `/admin/` e inicia sesión con la cuenta administradora.
-3. En **Groups**, crea un grupo con el nombre `Catalog reviewers`.
-4. Asigna únicamente **Can view resource** del modelo `Resource` de la aplicación `pages`. El permiso se identifica en código como `pages.view_resource`.
-5. En **Users**, abre la cuenta común que usarás como revisora y agrégala al grupo. Mantén desactivados **Staff status** y **Superuser status** para esa cuenta.
-6. Guarda los cambios e inicia sesión en ClassroomHub con la cuenta revisora para consultar `/resources/review/`.
+1. Abrir **Groups**.
+2. Crear o seleccionar `Catalog reviewers`.
+3. Asignar únicamente **Can view resource** de la aplicación `pages`.
+4. Guardar.
+5. Abrir **Users** y seleccionar la cuenta revisora.
+6. Añadirla al grupo.
+7. Mantener desactivados **Staff status** y **Superuser status**.
+8. Guardar.
 
-El grupo y sus asignaciones se guardan en la base de datos. Repite esta configuración en cada instalación nueva.
+### Configurar editores
 
-### Comportamiento por tipo de acceso
+1. Abrir **Groups**.
+2. Crear o seleccionar `Catalog editors`.
+3. Asignar los permisos de `Resource`:
+   - **Can view resource**.
+   - **Can add resource**.
+   - **Can change resource**.
+   - **Can delete resource**.
+4. Guardar.
+5. Abrir **Users** y seleccionar una cuenta existente.
+6. Añadirla al grupo.
+7. Mantener desactivados **Staff status** y **Superuser status**.
+8. Guardar.
 
-| Ruta | Visitante anónimo | Cuenta común sin permiso | Cuenta revisora |
-|---|---|---|---|
-| `/resources/` | HTTP `200` | HTTP `200` | HTTP `200` |
-| `/dashboard/` | Redirección al login | HTTP `200` | HTTP `200` |
-| `/dashboard/summary/` | Redirección al login | HTTP `200` | HTTP `200` |
-| `/resources/review/` | Redirección al login | HTTP `403` | HTTP `200` |
+Las cuentas editoras pueden utilizar el CRUD público sin acceder a Django Admin.
 
-En `resource_review`, `@login_required` se aplica antes de `@permission_required("pages.view_resource", raise_exception=True)`. La vista comprueba el permiso incluso cuando alguien escribe la URL directamente.
+Los grupos y sus asignaciones residen en MariaDB. En otra base deben configurarse administrativamente.
 
-## 11. Consultas mediante el ORM
+## 14. Consultas mediante el ORM
 
 ### Consultar recursos y categorías
+
+Desde:
+
+```bat
+python manage.py shell
+```
+
+Ejecutar:
 
 ```python
 from pages.models import Category, Resource
 
 resources = Resource.objects.select_related("category").all()
 available_resources = Resource.objects.filter(available=True)
-category = Category.objects.get(name="Programming")
-category_resources = category.resources.all()
+
+print(list(resources.values("id", "title", "category__name")))
+print("Disponibles:", available_resources.count())
+
+category = Category.objects.first()
+
+if category is not None:
+    print(category.name)
+    print(list(category.resources.values("id", "title")))
 ```
 
-`select_related("category")` permite recuperar los datos de la categoría junto con cada recurso. El catálogo público y la vista de revisión utilizan esta relación para presentar la información.
+El catálogo y la revisión utilizan `select_related("category")` para consultar también la información relacionada de la categoría.
 
-### Contar recursos en el resumen privado
+### Comprobar una actualización
+
+```python
+from pages.models import Resource
+
+resource_id = int(input("ID del recurso: "))
+resource = Resource.objects.get(pk=resource_id)
+
+print(
+    resource.pk,
+    resource.title,
+    resource.description,
+    resource.category.name,
+    resource.resource_type,
+    resource.available,
+)
+```
+
+Se compara la PK antes y después de editar. Debe permanecer igual.
+
+### Consultar grupos y permisos
+
+```python
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+account = User.objects.get(username="Juan")
+
+print(account.is_staff)
+print(account.is_superuser)
+print(list(account.groups.values_list("name", flat=True)))
+
+print(account.has_perm("pages.view_resource"))
+print(account.has_perm("pages.add_resource"))
+print(account.has_perm("pages.change_resource"))
+print(account.has_perm("pages.delete_resource"))
+```
+
+La cuenta editora conserva `False` para staff y superusuario, pero dispone de los cuatro permisos mediante su grupo.
+
+### Resumen privado
 
 ```python
 total_resources = Resource.objects.count()
 available_resources = Resource.objects.filter(available=True).count()
 ```
 
-El primer conteo incluye todos los registros. El segundo incluye los que tienen `available=True`. La vista entrega los dos valores a `dashboard_summary.html` y solo requiere una sesión autenticada.
+Estos conteos se muestran en `/dashboard/summary/`, que requiere autenticación.
 
-### Consultar usuarios y permisos
+## 15. Reto adicional: búsqueda pública
 
-Desde `python manage.py shell` se puede inspeccionar una cuenta existente. Reemplaza el nombre de ejemplo por una cuenta registrada en tu instalación.
+Se implementó una búsqueda sencilla por título utilizando GET.
+
+### Implementación
 
 ```python
-from django.contrib.auth import get_user_model
+def resources(request):
+    query = request.GET.get("q", "").strip()
 
-User = get_user_model()
-account = User.objects.get(username="nombre_de_usuario")
+    resources_list = Resource.objects.select_related("category").all()
 
-print(account.is_staff)
-print(account.is_superuser)
-print(account.groups.count())
-print(account.has_perm("pages.view_resource"))
+    if query:
+        resources_list = resources_list.filter(title__icontains=query)
+
+    context = {
+        "resources": resources_list,
+        "query": query,
+    }
+
+    return render(request, "pages/resources.html", context)
 ```
 
-`create_user()` y `set_password()` son las herramientas de Django para crear cuentas o cambiar contraseñas desde Python. El registro web usa `UserCreationForm`, que aplica el procesamiento de contraseñas al guardar la cuenta.
+### Comportamiento
 
-## 12. Pruebas automatizadas
+| Caso | Resultado |
+|---|---|
+| Término con coincidencias | Se muestran los recursos coincidentes. |
+| Término sin coincidencias | Se muestra un mensaje de resultado vacío. |
+| Término vacío | Se muestra todo el catálogo. |
+| Término con espacios exteriores | Se normaliza antes de buscar. |
+| Opción `Clear search` | Regresa al catálogo sin filtro. |
 
-Las pruebas se encuentran en `pages/tests.py`. El Laboratorio 08 conserva las diez pruebas del catálogo y agrega dieciocho de autenticación y permisos y dos del reto adicional.
+Ejemplo:
+
+```text
+http://127.0.0.1:8000/resources/?q=Quijote
+```
+
+La búsqueda permanece pública y no modifica registros.
+
+## 16. Pruebas automatizadas
+
+Las pruebas se encuentran en `pages/tests.py`.
+
+Se conservaron las 30 pruebas anteriores y se añadieron 37 pruebas para el laboratorio actual.
+
+### Distribución
 
 | Bloque | Cantidad | Cobertura |
 |---|---:|---|
-| Laboratorio 07 | 10 | Páginas, navegación, respuestas HTTP, datos del catálogo, modelos y relaciones. |
-| `AuthenticationTests` | 12 | Registro, formularios inválidos, credenciales, redirecciones, contador de sesión, logout y CSRF. |
-| `ResourceReviewPermissionTests` | 6 | Acceso anónimo, rechazo de cuentas sin permiso, acceso de revisores y continuidad del catálogo público. |
-| `DashboardSummaryTests` | 2 | Redirección de visitantes y conteos correctos para una cuenta autenticada común. |
-| **Total** | **30** | **Catálogo, autenticación, sesiones, permisos y resumen privado.** |
+| Pruebas anteriores | 30 | Catálogo, modelos, autenticación, sesiones, revisión y resumen privado. |
+| CRUD de la actividad | 30 | Detalle, creación, edición, eliminación, permisos, validación y CSRF. |
+| Comprobaciones adicionales | 4 | Restricciones de revisores, CSRF de eliminación, permisos independientes y categoría inválida al editar. |
+| Búsqueda | 3 | Resultados, ausencia de resultados y término vacío. |
+| **Total** | **67** | **Funcionalidades anteriores y CRUD completo con búsqueda.** |
 
-### Casos cubiertos en el Laboratorio 08
+La clase `ResourceCrudTests` contiene 34 pruebas: las 30 del bloque CRUD y cuatro adicionales.
 
-| Funcionalidad | Casos verificados |
+`ResourceSearchTests` contiene tres pruebas.
+
+El enunciado menciona 27 pruebas CRUD, pero el código proporcionado en la actividad contiene 30. El total de esta implementación considera los métodos realmente incluidos y conserva las dos pruebas adicionales del resumen privado del laboratorio anterior.
+
+### Casos cubiertos
+
+| Funcionalidad | Comprobaciones |
 |---|---|
-| Registro | Se muestra el formulario. Una cuenta válida se crea sin privilegios administrativos y su contraseña se puede verificar. Las contraseñas distintas y los nombres duplicados se rechazan. |
-| Login | Las credenciales incorrectas no abren una sesión. Las correctas redirigen al panel o al destino local indicado en `next`. |
-| Panel | Un visitante recibe una redirección al login. Las visitas consecutivas en una sesión incrementan el contador. |
-| Logout | GET devuelve HTTP `405`. POST cierra la sesión y una nueva solicitud al panel requiere autenticación. |
-| CSRF | El cliente con verificación CSRF activa rechaza con HTTP `403` un POST de login sin token. |
-| Revisión | El visitante va al login. La cuenta común recibe HTTP `403`, incluso al escribir la URL. El revisor recibe HTTP `200` sin convertirse en personal administrativo. |
-| Catálogo público | La página muestra recursos a visitantes sin sesión. |
-| Resumen privado | El visitante va al login. Una cuenta común autenticada puede ver el total y el número de recursos disponibles. |
+| Detalle | Acceso público, datos del recurso, categoría y respuesta 404. |
+| Catálogo | Enlaces al detalle y aparición de registros nuevos. |
+| Creación | Acceso autorizado, redirección, persistencia y aumento del conteo. |
+| Validación | Título corto, categoría inexistente y lista explícita de campos. |
+| Actualización | Formulario existente, cambios persistidos, misma PK y ausencia de duplicados. |
+| Edición inválida | Conservación de título, descripción, categoría y disponibilidad anteriores. |
+| Eliminación | GET no elimina; POST autorizado elimina solo el recurso elegido. |
+| Relaciones | La categoría y otros recursos sobreviven a la eliminación. |
+| Autenticación | Visitantes enviados al login. |
+| Autorización | Cuentas comunes y revisores rechazados según operación. |
+| Independencia de permisos | Poder crear no implica poder editar o eliminar. |
+| CSRF | Rechazo de creación y eliminación sin token cuando se exige su comprobación. |
+| Editor | Gestión sin staff ni superusuario y acceso a revisión. |
+| Búsqueda | Coincidencias, resultado vacío, término vacío y ausencia de modificaciones. |
 
 ### Ejecutar las pruebas
 
@@ -428,227 +896,419 @@ Las pruebas se encuentran en `pages/tests.py`. El Laboratorio 08 conserva las di
 python manage.py test pages
 ```
 
-Para ver el nombre y resultado de cada prueba:
+Para ver cada caso:
 
 ```bat
-python manage.py test pages -v 2
+python manage.py test pages --verbosity 2
 ```
 
 ### Base de pruebas
 
-El esquema de pruebas configurado para el proyecto es `test_classroom_hub`. Debe estar separado de `classroom_hub`, que contiene los datos de desarrollo. Las pruebas crean sus propios recursos, usuarios y grupos. La salida de la ejecución confirmó la creación y eliminación de la base temporal asociada al alias `default`.
+Django utiliza `test_classroom_hub`, separada de `classroom_hub`.
 
-## 13. Ejecución del proyecto
+Durante la ejecución:
 
-Desde la carpeta que contiene `manage.py`, activa el entorno virtual y confirma que MariaDB esté iniciado. Después ejecuta:
+1. Se prepara la base de pruebas.
+2. Se aplican las migraciones.
+3. Se crean datos ficticios para los casos.
+4. Se ejecutan las comprobaciones.
+5. Se elimina la base de pruebas al terminar una ejecución normal.
+
+Las cuentas `crud_reader`, `crud_editor` y `crud_reviewer` pertenecen a las pruebas. No se crean como cuentas permanentes en la base de desarrollo.
+
+### Resultado final
+
+**67 pruebas aprobadas y 0 fallos.**
+
+Se conservaron las funcionalidades de los laboratorios anteriores y se verificó el comportamiento del CRUD y la búsqueda.
+
+## 17. Comprobaciones manuales
+
+| Caso | Acción | Resultado verificado |
+|---|---|---|
+| P01 | Abrir el catálogo sin sesión. | Catálogo público visible. |
+| P02 | Abrir un detalle existente. | Datos del recurso y su categoría. |
+| P03 | Abrir un detalle inexistente. | HTTP 404. |
+| P04 | Abrir creación sin sesión. | Redirección al login. |
+| P05 | Abrir creación como cuenta común. | HTTP 403. |
+| P06 | Abrir creación como revisor. | HTTP 403. |
+| P07 | Crear como editor. | Guardado y redirección al catálogo. |
+| P08 | Enviar un título de dos caracteres. | Error sin guardado. |
+| P09 | Validar una categoría inexistente. | Error de categoría. |
+| P10 | Abrir edición como cuenta común. | HTTP 403. |
+| P11 | Editar como editor. | Cambios guardados sobre la misma PK. |
+| P12 | Enviar una edición inválida. | Valores anteriores conservados. |
+| P13 | Abrir confirmación de eliminación. | El recurso continúa existiendo. |
+| P14 | Abrir eliminación sin permiso. | HTTP 403. |
+| P15 | Confirmar eliminación como editor. | Solo desaparece el recurso elegido. |
+| P16 | Abrir el detalle del recurso eliminado. | HTTP 404. |
+| P17 | Consultar el catálogo tras cada operación. | Datos actualizados. |
+| P18 | Reiniciar Django. | Persistencia de cambios y eliminaciones. |
+| P19 | Abrir revisión como `reader_demo`. | Lectura autorizada. |
+| P20 | Ejecutar las pruebas. | Base aislada y suite aprobada. |
+| P21 | Buscar un título existente. | Coincidencias visibles. |
+| P22 | Buscar un título inexistente. | Mensaje sin coincidencias. |
+| P23 | Buscar con término vacío. | Catálogo completo. |
+
+### Recursos de práctica
+
+Se utilizaron recursos de prueba para comprobar edición y eliminación, conservando los registros históricos como `Quijote`.
+
+La eliminación se comprobó con un recurso temporal. Se verificó que cancelar no lo borraba y que confirmar no afectaba su categoría ni otros registros.
+
+### Ejercicio de permiso inexistente
+
+Se cambió temporalmente el permiso de `ResourceUpdateView` por uno inexistente y se comprobó el rechazo con una cuenta no superusuaria.
+
+Después se restauró:
+
+```python
+permission_required = "pages.change_resource"
+```
+
+### Cuenta común sin crear otro usuario
+
+Para comprobar el comportamiento de una cuenta común se retiró temporalmente `Catalog editors` de `Juan`.
+
+Al finalizar se restauró su pertenencia al grupo. `reader_demo` conservó su función de revisor.
+
+## 18. Ejecución del proyecto
+
+En el computador utilizado:
 
 ```bat
+cd /d C:\Users\PC\Desktop\laboratorio-09
 python manage.py check
-python manage.py migrate
 python manage.py runserver
 ```
 
-Abre [http://127.0.0.1:8000/](http://127.0.0.1:8000/) en el navegador. Para detener el servidor, pulsa `Ctrl + C` en la terminal.
+En una instalación con entorno virtual local, se activa antes de ejecutar los comandos.
 
-### Probar una sesión completa
+Abrir:
 
-1. Abre **Sign up** y crea una cuenta común.
-2. Entra a **Log in** e inicia sesión con esa cuenta.
-3. Abre **Dashboard**. La primera visita muestra `1`. Una recarga debe mostrar `2`.
-4. Abre **View resource summary** y comprueba ambos conteos.
-5. Pulsa **Log out**. El navegador debe volver al inicio.
-6. Intenta abrir `/dashboard/` sin sesión. Django debe enviarte al login.
-7. Inicia sesión otra vez y comprueba que el contador empiece en `1`.
+[http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 
-## 14. Dificultades encontradas y soluciones
+Para detener el servidor:
 
-### Configuración heredada de MariaDB
+```text
+Ctrl + C
+```
 
-En el Laboratorio 07 se pasó de la instalación de MariaDB incluida en XAMPP a una instalación independiente en el puerto `3307`. Esta configuración permitió conservar la conexión del catálogo y preparar los permisos del esquema de pruebas. El Laboratorio 08 reutiliza esa configuración.
+### Flujo de uso como editor
 
-### Consulta de una cuenta inexistente
+1. Iniciar sesión con la cuenta editora.
+2. Abrir **Resources**.
+3. Pulsar **Add resource**.
+4. Completar los campos y guardar.
+5. Abrir el detalle desde el título.
+6. Seleccionar **Edit resource** para modificarlo.
+7. Guardar y verificar los cambios.
+8. Seleccionar **Delete resource** para abrir la confirmación.
+9. Cancelar o confirmar la eliminación.
+10. Cerrar sesión mediante **Log out**.
 
-Durante el reto de registro se ejecutó `User.objects.get()` con un nombre de ejemplo. Django devolvió `User.DoesNotExist` y los intentos de consultar `account` produjeron `NameError` porque la variable no se había asignado.
+### Flujo de uso como visitante
 
-Se listaron los nombres existentes mediante `values_list("username", flat=True)`, se consultó la cuenta registrada y se ejecutaron las instrucciones en líneas separadas. El resultado fue `False False 0` para `is_staff`, `is_superuser` y cantidad de grupos.
+1. Abrir el catálogo.
+2. Consultar un detalle.
+3. Buscar por título.
+4. Limpiar el filtro.
+5. Comprobar que las operaciones de gestión requieren autenticación.
 
-### Publicación en la rama del laboratorio
+## 19. Dificultades encontradas y soluciones
 
-El primer intento de push devolvió `src refspec laboratorio-8 does not match any`. El commit ya existía localmente, pero la rama de destino aún no estaba disponible en esa copia y `origin` apuntaba al repositorio anterior.
+### Identificación del entorno de ejecución
 
-Se actualizó `origin` para apuntar a `ClassroomHub`, se obtuvo la rama `laboratorio-8` y se incorporó el commit existente. La comprobación de Git mostró el mismo commit en `laboratorio-8` y `origin/laboratorio-8`.
+El indicador de la terminal sugería un entorno virtual activo, pero `where python` y las ubicaciones de los paquetes mostraron el intérprete global.
 
-## 15. Funcionalidades implementadas
+Se comprobó qué Python ejecutaba realmente el proyecto y se continuó con el entorno compatible que superó las pruebas.
 
-### Catálogo persistente
+### Conservación de la base histórica
 
-- Navegación mediante rutas, vistas y plantillas de Django.
-- Conexión a MariaDB mediante variables de entorno.
-- Modelos `Category` y `Resource` con relación uno a muchos.
-- Consultas dinámicas mediante el ORM.
-- Administración de categorías y recursos mediante Django Admin.
-- Migraciones y pruebas del catálogo en un esquema independiente.
+Se verificaron el nombre de la base, la versión del motor y el puerto antes de modificar el proyecto.
 
-### Autenticación y control de acceso
+Esto permitió reutilizar recursos, categorías y usuarios sin recrear tablas.
 
-- Registro de cuentas comunes mediante `UserCreationForm`.
-- Inicio de sesión con `LoginView` y manejo del destino `next`.
-- Cierre de sesión mediante `LogoutView` con POST y CSRF.
-- Navegación según el estado de autenticación y el permiso de revisión.
-- Panel protegido con `@login_required` y contador en `request.session`.
-- Revisión de solo lectura protegida con `pages.view_resource`.
-- Grupo `Catalog reviewers` para asignar el permiso a cuentas de prueba.
-- Resumen privado con el total de recursos y el total disponible.
-- Pruebas de registro, credenciales, sesión, CSRF y permisos.
+### Diferencia entre las migraciones del ejemplo y el proyecto
 
-## 16. Alcance y posibles mejoras
+El enunciado describe la incorporación de `resource_type` en una etapa anterior. En esta copia, el campo ya existe en `0001_initial`.
 
-El Laboratorio 08 concentra la administración de datos en Django Admin. Desde la interfaz web, las cuentas pueden consultar el catálogo público y, según su acceso, el panel, el resumen y la página de revisión.
+Se conservó el historial real y no se generó una migración redundante.
 
-Los formularios CRUD fuera de Django Admin, la recuperación de contraseñas por correo, la autenticación multifactor y los proveedores externos de identidad quedan fuera del alcance de esta etapa. Entre las ampliaciones del catálogo se contemplan búsqueda, filtros, paginación y formularios de edición sujetos a permisos específicos.
+### Integración de funcionalidades anteriores
 
-## 17. Conclusiones
+Los ejemplos generales no incluían todas las extensiones del proyecto, como FAQ y resumen privado.
 
-El Laboratorio 08 amplió ClassroomHub con el sistema de usuarios y sesiones de Django sobre el catálogo persistente del Laboratorio 07. El panel y el resumen privado requieren una sesión autenticada. La página de revisión añade una comprobación de permiso para separar el acceso de las cuentas comunes y el de las cuentas revisoras.
+Se conservaron sus vistas, rutas, plantillas y pruebas al integrar el CRUD.
 
-El uso de `UserCreationForm`, `LoginView` y `LogoutView` permitió aprovechar las herramientas de validación y autenticación del framework. Las pruebas automatizadas comprobaron los flujos de registro y sesión, las restricciones de acceso y la continuidad del catálogo público.
+### Errores al pegar bloques en el shell
 
-## 18. Verificación final del Laboratorio 08
+Durante un ejercicio apareció un error de sintaxis por no finalizar correctamente una definición de clase antes de ejecutar otras instrucciones.
 
-### 18.1. Estado de las migraciones
+Se separaron los bloques y se cerró la definición con una línea vacía.
 
-Se ejecutó:
+### Interpretación de respuestas 403
+
+Las solicitudes de cuentas sin permisos generaron respuestas 403 y mensajes de `PermissionDenied`.
+
+Se comprobó que eran el comportamiento esperado de autorización, no errores que debieran resolverse retirando los permisos.
+
+### Enlaces a operaciones todavía no implementadas
+
+En el primer avance se omitieron temporalmente los enlaces de edición y eliminación.
+
+Se añadieron cuando sus rutas y vistas estuvieron disponibles, evitando errores `NoReverseMatch`.
+
+### Visualización de diferencias en Git
+
+El comando de diferencias abrió el paginador de Git.
+
+Para consultar la salida directamente en la terminal se utilizó:
 
 ```bat
-python manage.py showmigrations auth contenttypes sessions pages
+git --no-pager diff --cached --stat
 ```
 
-Todas las migraciones de las cuatro aplicaciones aparecieron aplicadas. La comprobación `python manage.py makemigrations --check --dry-run` devolvió `No changes detected`.
+## 20. Respuestas a las preguntas del laboratorio
 
-### 18.2. Comprobación de configuración
+### 1. ¿Qué diferencia existe entre un Form y un ModelForm?
+
+`Form` permite definir campos y validaciones de forma independiente. Si sus datos deben guardarse en un modelo, esa lógica se implementa manualmente.
+
+`ModelForm` obtiene los campos y parte de las validaciones desde el modelo y ofrece `save()` para crear o actualizar una instancia.
+
+### 2. ¿Por qué conviene declarar explícitamente Meta.fields?
+
+Porque establece qué campos puede modificar una persona y evita que un campo interno añadido posteriormente quede expuesto automáticamente.
+
+### 3. ¿Qué ocurre cuando ResourceForm.is_valid() devuelve False?
+
+El formulario contiene errores. Se presenta nuevamente para corregirlos y no se guarda el recurso.
+
+### 4. ¿Qué ventajas aporta CreateView?
+
+Gestiona el formulario inicial, el procesamiento de POST, la validación, el guardado y la redirección, reduciendo código repetido.
+
+### 5. ¿Por qué UpdateView necesita recuperar el objeto existente?
+
+Porque debe aplicar los cambios sobre una fila concreta, conservar su identificador y presentar sus valores iniciales.
+
+### 6. ¿Por qué DeleteView muestra una confirmación por GET y elimina por POST?
+
+GET permite consultar y cancelar sin modificar datos. POST representa la acción de eliminación y permite aplicar las comprobaciones de autorización y CSRF.
+
+### 7. ¿Qué ventaja aporta reverse_lazy()?
+
+Retrasa la resolución de la URL hasta que se necesita, por lo que puede utilizarse en atributos de clase sin resolver las rutas durante la importación.
+
+### 8. ¿Por qué una cuenta autenticada no puede editar sin pages.change_resource?
+
+La autenticación identifica la cuenta. La autorización determina qué operaciones tiene permitidas. Son comprobaciones distintas.
+
+### 9. ¿Qué diferencia hay entre Catalog reviewers y Catalog editors?
+
+`Catalog reviewers` tiene permiso de lectura del recurso. `Catalog editors` incorpora permisos para consultar, crear, actualizar y eliminar.
+
+### 10. ¿Por qué los enlaces condicionales no sustituyen los permisos de la vista?
+
+Porque una persona puede escribir una dirección o enviar una solicitud directamente. La vista debe rechazar la operación aunque no se haya utilizado un enlace de la interfaz.
+
+### 11. ¿Qué sucede cuando el ID de un recurso no existe?
+
+El detalle devuelve 404. En las operaciones protegidas, primero se verifica el acceso; si la cuenta está autorizada y el recurso no existe, se devuelve 404.
+
+### 12. ¿Cómo se comprueba que una actualización conserva la PK?
+
+Se compara el identificador antes y después de guardar y se verifica que la cantidad de recursos no aumentó.
+
+### 13. ¿Por qué la base de pruebas no puede contener datos importantes?
+
+Porque el ejecutor puede crearla y eliminarla. Debe ser independiente de la base de desarrollo y contener únicamente datos de prueba.
+
+### 14. ¿Qué limitaciones quedan antes de exponer un CRUD real en Internet?
+
+Se necesita preparar el despliegue: desactivar DEBUG, configurar hosts, HTTPS, secretos, cookies, servidor de aplicación, respaldo de datos, registros operativos y revisión de reglas de acceso.
+
+El servidor `runserver` se utiliza para desarrollo.
+
+## 21. Funcionalidades implementadas
+
+### Catálogo y persistencia
+
+- Conexión a MariaDB.
+- Modelos `Category` y `Resource`.
+- Relación protegida entre categorías y recursos.
+- Lista pública con información relacionada.
+- Detalle público por PK.
+- Búsqueda pública por título.
+- Persistencia después de reiniciar Django.
+
+### Autenticación y sesiones
+
+- Registro con `UserCreationForm`.
+- Login con `LoginView`.
+- Logout mediante POST.
+- Panel privado.
+- Contador de visitas.
+- Resumen privado.
+- Revisión según permiso.
+
+### Gestión de recursos
+
+- Formulario con campos explícitos.
+- Validación de título.
+- Creación con permiso.
+- Edición con permiso y conservación de PK.
+- Confirmación de eliminación.
+- Eliminación autorizada mediante POST en la interfaz.
+- Plantilla compartida para crear y editar.
+- Enlaces condicionados por permisos.
+
+### Verificación
+
+- Conservación de las 30 pruebas anteriores.
+- Pruebas CRUD y permisos.
+- Pruebas CSRF.
+- Pruebas de búsqueda.
+- Comprobación de permisos independientes.
+- Comprobación de datos intactos después de rechazos.
+- Total de 67 pruebas aprobadas.
+
+## 22. Alcance y posibles mejoras
+
+El laboratorio implementa un CRUD de recursos sobre los modelos existentes y conserva el sistema de usuarios de Django.
+
+Las categorías continúan gestionándose desde Django Admin.
+
+Quedan fuera del alcance de esta entrega:
+
+- CRUD público de categorías.
+- Carga de archivos.
+- API REST.
+- Interfaces JavaScript avanzadas.
+- Paginación.
+- Filtros avanzados.
+- Papelera y restauración de recursos.
+- Recuperación de contraseñas por correo.
+- Autenticación multifactor.
+- Despliegue en producción.
+
+La búsqueda sencilla por título sí se implementó como reto adicional.
+
+## 23. Verificación final del Laboratorio 09
+
+### Configuración
+
+```bat
+python manage.py check
+```
+
+Resultado:
 
 ```text
 System check identified no issues (0 silenced).
 ```
 
-### 18.3. Registro de una cuenta sin privilegios
+### Sin cambios pendientes en los modelos
 
-En el shell de Django se verificaron los valores de `is_staff`, `is_superuser` y la cantidad de grupos de la cuenta usada para el reto.
-
-```text
-False False 0
+```bat
+python manage.py makemigrations --check --dry-run
 ```
 
-### 18.4. Resultado de las pruebas automatizadas
+Resultado:
 
 ```text
-Found 30 test(s).
-Creating test database for alias 'default'...
-System check identified no issues (0 silenced).
-..............................
-----------------------------------------------------------------------
-Ran 30 tests in 73.847s
-
-OK
-Destroying test database for alias 'default'...
+No changes detected
 ```
 
-**Resultado final: 30 pruebas aprobadas y 0 fallos.** El total incluye las 28 pruebas de la entrega base y las dos pruebas del resumen privado.
+### Pruebas
 
-## 19. Estrategia de control de versiones
+```bat
+python manage.py test pages --verbosity 2
+```
 
-El proyecto continúa en el repositorio personal `juanlsk29/ClassroomHub`. La rama `laboratorio-8` parte del trabajo del Laboratorio 07 y reúne los cambios de autenticación y autorización en dos etapas.
+Resultado final confirmado:
 
-| Etapa | Commit | Estado al documentar |
+| Comprobación | Resultado |
+|---|---|
+| Total de pruebas | 67 |
+| Pruebas aprobadas | 67 |
+| Fallos | 0 |
+| Base de pruebas | `test_classroom_hub` |
+| Base de desarrollo | `classroom_hub`, separada de las pruebas |
+
+### Roles finales
+
+- `pc` conserva su función administradora.
+- `Juan` pertenece a `Catalog editors`.
+- `Juan` no es staff ni superusuario.
+- `reader_demo` pertenece a `Catalog reviewers`.
+- El registro público no asigna privilegios.
+- `ResourceUpdateView` utiliza `pages.change_resource`.
+
+### Persistencia
+
+Los registros creados y modificados permanecen después de reiniciar Django. Los recursos eliminados no reaparecen.
+
+## 24. Estrategia de control de versiones
+
+El desarrollo del Laboratorio 09 se organiza en dos commits sobre la rama `laboratorio-9`.
+
+| Etapa | Commit o mensaje | Contenido |
 |---|---|---|
-| Base del Laboratorio 07 | `f2b794f` — `feat: mostrar recursos persistidos` | Presente en el historial. |
-| Primera parte del Laboratorio 08 | `ee3d347` — `feat: agregar registro, inicio y cierre de sesión y panel privado` | Publicado en `origin/laboratorio-8`. |
-| Segunda parte del Laboratorio 08 | `feat: agregar revisión del catálogo, resumen privado y pruebas de acceso` | Pendiente de crear al redactar el README. |
+| Primera parte | `70cd77d` — `feat: agregar formulario, detalle publico y creacion de recursos con permisos` | ModelForm, validación, detalle público, creación protegida, navegación y documentación inicial. |
+| Segunda parte | `feat: completar CRUD, busqueda y pruebas del laboratorio 9` | Edición, eliminación, búsqueda, pruebas completas y documentación final. |
 
-El segundo commit reúne la vista de revisión, el resumen privado, las pruebas nuevas y esta documentación. Los grupos, las cuentas y sus asignaciones se configuran en la base de datos de cada instalación. Las credenciales, el archivo `.env`, las cookies de sesión y los datos privados de usuarios quedan fuera del repositorio.
+La publicación del primer commit fue comprobada en `origin/laboratorio-9`.
 
-## 20. Estado final del Laboratorio 08
+El segundo avance reúne la implementación final validada. Su identificador se consulta en el historial de Git una vez creado.
+
+### Consultar rama, estado e historial
+
+```bat
+git branch --show-current
+git status
+git --no-pager log -2 --oneline
+```
+
+### Publicar avances
+
+```bat
+git push origin laboratorio-9
+```
+
+La entrega se desarrolla en `laboratorio-9`, conservando las ramas de los laboratorios anteriores.
+
+Los grupos, sus asignaciones y los registros del catálogo se almacenan en MariaDB; no forman parte automáticamente del contenido de un commit.
+
+## 25. Conclusiones
+
+El Laboratorio 09 amplió ClassroomHub desde un catálogo con autenticación y revisión hasta una aplicación con gestión de recursos desde su propia interfaz.
+
+`ModelForm` permitió reutilizar la definición del modelo y centralizar las validaciones. Las vistas genéricas simplificaron la consulta, creación, actualización y eliminación, mientras los permisos separaron la autenticación de la autorización por operación.
+
+La actualización conserva el identificador del recurso. La eliminación diferencia la consulta de la confirmación y el envío que modifica la base. Los formularios inválidos y las solicitudes no autorizadas no alteran los registros.
+
+Las 67 pruebas aprobadas verifican tanto las funcionalidades nuevas como la continuidad del catálogo, las sesiones, la revisión y el resumen privado. La búsqueda opcional completa una interfaz pública de consulta sin modificar el alcance de los permisos de gestión.
+
+## 26. Estado final
 
 | Componente | Estado |
 |---|---|
-| Catálogo persistente | Conserva los modelos y la conexión a MariaDB del Laboratorio 07. |
-| Autenticación | Registro, login y logout integrados con las herramientas de Django. |
-| Sesiones | Panel privado con contador de visitas. |
-| Autorización | Revisión protegida mediante `pages.view_resource`. |
-| Reto adicional | Resumen privado con conteos del ORM y dos pruebas. |
-| Migraciones | Aplicadas en `auth`, `contenttypes`, `sessions` y `pages`. |
-| Verificación de Django | Cero problemas y ningún cambio pendiente de migración. |
-| Pruebas automatizadas | 30 aprobadas. |
-| Rama de entrega | `laboratorio-8`. |
-
-
-
-
-
-
-
-
-
-
-
-## Laboratorio 09 — Primer avance
-
-Rama de trabajo: `laboratorio-9`.
-
-### Funcionalidades implementadas
-
-- Formulario `ResourceForm` basado en el modelo existente `Resource`.
-- Lista explícita de campos editables.
-- Validación de título con mínimo tres caracteres.
-- Detalle público de recursos.
-- Creación mediante `CreateView`.
-- Autenticación y permiso `pages.add_resource` obligatorios para crear.
-- Plantilla de formulario preparada para reutilizarse en edición.
-- Navegación y enlaces condicionados por permisos.
-- Conservación de autenticación, sesiones, revisión, FAQ y resumen privado.
-- Conservación de las 30 pruebas anteriores.
-- Uso de la base MariaDB existente, sin nuevos modelos ni migraciones.
-
-### Rutas incorporadas
-
-| Método | Ruta | Acceso |
-|---|---|---|
-| GET | `/resources/<pk>/` | Público |
-| GET | `/resources/new/` | Permiso `pages.add_resource` |
-| POST | `/resources/new/` | Permiso `pages.add_resource` y CSRF |
-
-### Configuración de roles
-
-El grupo `Catalog editors` contiene los permisos `view_resource`,
-`add_resource`, `change_resource` y `delete_resource`.
-
-La asignación del grupo se realiza administrativamente, desde Django Admin
-o el shell local de administración. El registro público no concede permisos.
-
-Las cuentas existentes se reutilizan. Los grupos y sus asignaciones
-se almacenan en MariaDB y no se crean automáticamente al clonar el repositorio.
-
-Las categorías se gestionan en Django Admin:
-`/admin/` → Categories → Add.
-Se utiliza una cuenta administradora existente y se introduce un nombre único
-y, opcionalmente, una descripción.
-
-Para asignar editores desde Admin:
-Users → seleccionar una cuenta existente → añadir `Catalog editors`
-en Groups → Save. No es necesario activar Staff status ni Superuser status.
-
-### Comprobaciones de esta etapa
-
-- Lista y detalle públicos.
-- Detalle inexistente devuelve 404.
-- Creación anónima redirige al login.
-- Cuenta común y revisor sin permiso reciben 403.
-- Editor puede abrir y enviar el formulario.
-- Título corto y categoría inexistente producen errores de validación.
-- Guardado correcto redirige al catálogo.
-- Los datos persisten al reiniciar Django.
-
-### Pendiente para el segundo avance
-
-Edición, eliminación con confirmación, pruebas automatizadas CRUD,
-búsqueda pública opcional, ejercicios finales y documentación consolidada.
+| Catálogo persistente | Conservado y ampliado. |
+| Base de datos | MariaDB existente reutilizada. |
+| Modelos y migraciones | Conservados, sin cambios pendientes. |
+| Autenticación | Registro, login y logout operativos. |
+| Sesiones | Panel y contador conservados. |
+| Revisión | Protegida mediante `pages.view_resource`. |
+| Formulario | Campos explícitos y validación del título. |
+| Detalle | Público, con respuesta 404 cuando corresponde. |
+| Creación | Protegida mediante `pages.add_resource`. |
+| Edición | Protegida mediante `pages.change_resource`, sin duplicados. |
+| Eliminación | Confirmación y POST protegido mediante permiso y CSRF. |
+| Categorías | Administradas desde Django Admin. |
+| Búsqueda | Pública, por título y de solo lectura. |
+| Usuarios | Cuentas existentes reutilizadas. |
+| Pruebas | 67 aprobadas y 0 fallos. |
+| Documentación | Instalación, configuración, rutas, permisos, pruebas y decisiones incluidas. |
+| Rama de entrega | `laboratorio-9`. |
