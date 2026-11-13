@@ -1,0 +1,18 @@
+{% extends "pages/base.html" %}
+
+{% block title %}Log in | ClassroomHub{% endblock %}
+
+{% block content %}
+    <h2>Log in</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <input type="hidden" name="next" value="{{ next }}">
+        <button type="submit">Log in</button>
+    </form>
+
+    <p>New to ClassroomHub?
+        <a href="{% url 'pages:signup' %}">Create an account</a>
+    </p>
+{% endblock %}
